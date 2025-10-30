@@ -1,0 +1,250 @@
+@import "tailwindcss";
+
+* {
+  font-family: var(--font-sora), var(--font-be-vietnam-pro);
+}
+
+:root {
+  --font-sora: "Sora", sans-serif;
+  --font-be-vietnam-pro: "Be Vietnam Pro", sans-serif;
+
+  /* Clean Pump.fun CSS variables */
+  --background: #000000;
+  --background-secondary: #111111;
+  --background-tertiary: #1a1a1a;
+  --foreground: #ffffff;
+  --foreground-secondary: #9ca3af;
+  --foreground-tertiary: #6b7280;
+  --card: #111111;
+  --card-secondary: #1a1a1a;
+  --card-hover: #222222;
+  --border: #374151;
+  --border-light: #4b5563;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+html {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  min-height: 100vh;
+}
+
+/* Clean scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-light);
+}
+
+/* Simple button styles */
+.btn-pump {
+  background: var(--card-secondary);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-pump:hover {
+  background: var(--card-hover);
+  border-color: var(--border-light);
+}
+
+.btn-pump:active {
+  background: var(--card);
+}
+
+/* Clean card styles */
+.card-pump {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  transition: all 0.2s ease;
+}
+
+.card-pump:hover {
+  border-color: var(--border-light);
+}
+
+/* Clean input styles */
+.input-pump {
+  background: var(--background-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--foreground);
+  padding: 12px 16px;
+  font-size: 16px;
+  transition: all 0.2s ease;
+}
+
+.input-pump:focus {
+  outline: none;
+  border-color: #7c3aed;
+  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.1);
+}
+
+.input-pump::placeholder {
+  color: var(--foreground-tertiary);
+}
+
+/* Custom Animations for Boss Raid */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shine {
+  0%, 100% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 1s ease-out forwards;
+}
+
+.animate-slideUp {
+  animation: slideUp 0.8s ease-out forwards;
+}
+
+.animate-shine {
+  animation: shine 2s ease-in-out infinite;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Enhanced glow effects */
+.glow-red {
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.5), 0 0 40px rgba(239, 68, 68, 0.3);
+}
+
+.glow-green {
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.5), 0 0 40px rgba(34, 197, 94, 0.3);
+}
+
+.glow-purple {
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.5), 0 0 40px rgba(139, 92, 246, 0.3);
+}
+
+/* Responsive improvements for Boss Raid */
+@media (max-width: 1024px) {
+  .boss-raid-layout {
+    flex-direction: column !important;
+  }
+
+  .boss-central {
+    max-width: 100% !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .animate-fadeIn {
+    animation-duration: 0.8s;
+  }
+
+  .animate-slideUp {
+    animation-duration: 0.6s;
+  }
+
+  .boss-image {
+    width: 300px !important;
+    height: 300px !important;
+  }
+}
+
+/* Custom Arena Animations */
+@keyframes energyPulse {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes hexagonGlow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.6), 0 0 30px rgba(139, 92, 246, 0.4);
+  }
+}
+
+@keyframes arenaScan {
+  0% {
+    transform: translateX(-100%) translateY(-100%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(100vw) translateY(100vh) rotate(45deg);
+  }
+}
+
+.animate-energy-pulse {
+  animation: energyPulse 2s ease-in-out infinite;
+}
+
+.animate-hexagon-glow {
+  animation: hexagonGlow 3s ease-in-out infinite;
+}
+
+.animate-arena-scan {
+  animation: arenaScan 8s linear infinite;
+}
