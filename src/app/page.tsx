@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Image from "next/image";
 import type { Boss as DatabaseBoss } from "@/lib/db/database";
 
@@ -34,7 +34,7 @@ const processQueue = async () => {
   }
 };
 
-const queueRequest = <T extends unknown>(
+const queueRequest = <T,>(
   requestFn: () => Promise<T>
 ): Promise<T> => {
   return new Promise((resolve, reject) => {
@@ -352,16 +352,6 @@ export default function Home() {
     }
   };
 
-  const safeReconnect = () => {
-    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-      reconnectAttempts++;
-      const delay = BASE_RECONNECT_DELAY * reconnectAttempts;
-      setTimeout(() => {
-        connectWebSocket();
-      }, delay);
-    }
-  };
-
   const loadGameData = async () => {
     try {
       const bossResponse = await fetch("/api/bosses?action=current");
@@ -399,7 +389,7 @@ export default function Home() {
     }
   };
 
-  const connectWebSocket = () => {
+  const connectWebSocket = useCallback(() => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
       return;
     }
@@ -463,14 +453,21 @@ export default function Home() {
 
     ws.onclose = (event) => {
       setWsConnected(false);
-      safeReconnect();
+      // Safe reconnect logic
+      if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+        reconnectAttempts++;
+        const delay = BASE_RECONNECT_DELAY * reconnectAttempts;
+        setTimeout(() => {
+          connectWebSocket();
+        }, delay);
+      }
     };
 
     ws.onerror = (error) => {
       console.error("❌ WebSocket error:", error);
       setWsConnected(false);
     };
-  };
+  }, []);
 
   const disconnectWebSocket = () => {
     if (wsRef.current) {
@@ -491,7 +488,7 @@ export default function Home() {
       clearTimeout(initTimer);
       disconnectWebSocket();
     };
-  }, []);
+  }, [connectWebSocket]);
 
   useEffect(() => {
     const healthCheck = setInterval(() => {
@@ -510,14 +507,13 @@ export default function Home() {
     }, 30000);
 
     return () => clearInterval(healthCheck);
-  }, [wsConnected]);
+  }, [wsConnected, connectWebSocket]);
 
   useEffect(() => {
     if (currentBoss && !wsConnected) {
       connectWebSocket();
-    } else if (currentBoss) {
     }
-  }, [currentBoss]);
+  }, [currentBoss, wsConnected, connectWebSocket]);
 
   useEffect(() => {
     const holdersRefreshInterval = setInterval(() => {
