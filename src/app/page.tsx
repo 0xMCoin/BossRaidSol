@@ -34,9 +34,7 @@ const processQueue = async () => {
   }
 };
 
-const queueRequest = <T,>(
-  requestFn: () => Promise<T>
-): Promise<T> => {
+const queueRequest = <T,>(requestFn: () => Promise<T>): Promise<T> => {
   return new Promise((resolve, reject) => {
     requestQueue.push(async () => {
       try {
@@ -96,6 +94,24 @@ export default function Home() {
   const [holdersError, setHoldersError] = useState<string | null>(null);
   const [bossDefeated, setBossDefeated] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
+
+  // Refs para acessar valores atuais sem causar re-renders
+  const currentBossRef = useRef<DatabaseBoss | null>(null);
+  const bossDefeatedRef = useRef(false);
+  const gameSessionRef = useRef<any>(null);
+
+  // Atualizar refs quando estados mudarem
+  useEffect(() => {
+    currentBossRef.current = currentBoss;
+  }, [currentBoss]);
+
+  useEffect(() => {
+    bossDefeatedRef.current = bossDefeated;
+  }, [bossDefeated]);
+
+  useEffect(() => {
+    gameSessionRef.current = gameSession;
+  }, [gameSession]);
 
   // Helper functions - Versões otimizadas com fila
   const saveTradeToDatabase = async (tradeData: any) => {
@@ -162,33 +178,37 @@ export default function Home() {
     });
   };
 
-  const updateGameSession = async (
-    damageDealt: number = 0,
-    healApplied: number = 0,
-    newBossId?: number
-  ) => {
-    if (!gameSession) return;
+  const updateGameSession = useCallback(
+    async (
+      damageDealt: number = 0,
+      healApplied: number = 0,
+      newBossId?: number
+    ) => {
+      const session = gameSessionRef.current;
+      if (!session) return;
 
-    return queueRequest(async () => {
-      try {
-        await fetch("/api/game", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            action: "updateSession",
-            sessionId: gameSession.id,
-            damageDealt,
-            healApplied,
-            newBossId,
-          }),
-        });
-      } catch (error) {
-        console.error("Error updating game session:", error);
-      }
-    });
-  };
+      return queueRequest(async () => {
+        try {
+          await fetch("/api/game", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              action: "updateSession",
+              sessionId: session.id,
+              damageDealt,
+              healApplied,
+              newBossId,
+            }),
+          });
+        } catch (error) {
+          console.error("Error updating game session:", error);
+        }
+      });
+    },
+    []
+  );
 
   const loadNextBoss = async () => {
     try {
@@ -210,19 +230,35 @@ export default function Home() {
     }
   };
 
-  const processTrade = async (data: any) => {
+  const processTrade = useCallback(async (data: any) => {
     try {
-      if (bossDefeated) return;
+      // Usar refs para sempre ter valores atuais
+      if (bossDefeatedRef.current) {
+        console.log("🚫 Trade ignorado: boss já derrotado");
+        return;
+      }
 
-      // Usar estado local ao invés de fazer fetch novamente
-      if (!currentBoss) return;
-      if (currentBoss.isDefeated) return;
+      const currentBoss = currentBossRef.current;
+      if (!currentBoss) {
+        console.log("🚫 Trade ignorado: nenhum boss carregado");
+        return;
+      }
+      if (currentBoss.isDefeated) {
+        console.log("🚫 Trade ignorado: boss já derrotado");
+        return;
+      }
+
+      console.log("✅ Processando trade:", {
+        signature: data.signature?.substring(0, 8) + "...",
+        type: data.txType,
+        solAmount: data.solAmount || data.sol_amount || data.amount,
+      });
 
       const solValue = data.solAmount || data.sol_amount || data.amount || 0;
       const txType = data.txType?.toLowerCase();
 
       if (txType === "buy" || txType === "create") {
-        const damage = solValue * 200 * 2; /*  currentBoss.buyWeight; */
+        const damage = solValue * 200 * currentBoss.buyWeight;
         const newHealth = Math.max(0, currentBoss.currentHealth - damage);
         const isDefeated = newHealth <= 0;
 
@@ -248,7 +284,12 @@ export default function Home() {
           timestamp: new Date().toISOString(),
           bossName: currentBoss.name,
         };
-        setRecentTrades((prev: any[]) => [newTrade, ...prev.slice(0, 9)]);
+        console.log("📊 Adicionando trade ao monitor:", newTrade);
+        setRecentTrades((prev: any[]) => {
+          const updated = [newTrade, ...prev.slice(0, 9)];
+          console.log("📊 Trades atualizados, total:", updated.length);
+          return updated;
+        });
 
         // Chamadas ao servidor em paralelo (sem bloquear UI)
         Promise.all([
@@ -313,7 +354,12 @@ export default function Home() {
           timestamp: new Date().toISOString(),
           bossName: currentBoss.name,
         };
-        setRecentTrades((prev: any[]) => [newTrade, ...prev.slice(0, 9)]);
+        console.log("📊 Adicionando trade ao monitor:", newTrade);
+        setRecentTrades((prev: any[]) => {
+          const updated = [newTrade, ...prev.slice(0, 9)];
+          console.log("📊 Trades atualizados, total:", updated.length);
+          return updated;
+        });
 
         // Chamadas ao servidor em paralelo (sem bloquear UI)
         Promise.all([
@@ -350,7 +396,7 @@ export default function Home() {
       console.error("Error processing trade:", error);
       throw error;
     }
-  };
+  }, []);
 
   const loadGameData = async () => {
     try {
@@ -415,15 +461,17 @@ export default function Home() {
       clearTimeout(connectionTimeout);
       setWsConnected(true);
       reconnectAttempts = 0;
+      console.log("✅ WebSocket conectado!");
       const mint = process.env.NEXT_PUBLIC_TOKEN_MINT || "";
       if (!mint) {
-        console.error("Mint is not set");
+        console.error("❌ Mint is not set");
         return;
       }
       const subscribeMessage = JSON.stringify({
         method: "subscribeTokenTrade",
         keys: [mint],
       });
+      console.log("📡 Inscrevendo-se em trades do token:", mint);
       ws.send(subscribeMessage);
     };
 
@@ -431,9 +479,29 @@ export default function Home() {
       try {
         const data = JSON.parse(event.data);
 
+        console.log("📨 WebSocket message recebido:", {
+          hasSignature: !!data.signature,
+          hasMint: !!data.mint,
+          txType: data.txType,
+          solAmount: data.solAmount || data.sol_amount || data.amount,
+        });
+
         if (data.signature && data.mint) {
-          if (!isValidTradeData(data) || isRateLimited()) return;
-          if (processedTrades.has(data.signature)) return;
+          if (!isValidTradeData(data)) {
+            console.log("❌ Trade inválido:", data);
+            return;
+          }
+          if (isRateLimited()) {
+            console.log("⏱️ Rate limit atingido");
+            return;
+          }
+          if (processedTrades.has(data.signature)) {
+            console.log(
+              "🔄 Trade já processado:",
+              data.signature.substring(0, 8) + "..."
+            );
+            return;
+          }
           processedTrades.add(data.signature);
           if (processedTrades.size > 1000) {
             const recentTrades = Array.from(processedTrades).slice(-500);
@@ -444,6 +512,8 @@ export default function Home() {
             console.error("Trade processing failed:", error);
             processedTrades.delete(data.signature);
           });
+        } else {
+          console.log("⚠️ Mensagem WebSocket sem signature ou mint:", data);
         }
       } catch (error) {
         console.error("❌ Error parsing WebSocket message:", error);
@@ -467,7 +537,7 @@ export default function Home() {
       console.error("❌ WebSocket error:", error);
       setWsConnected(false);
     };
-  }, []);
+  }, [processTrade]);
 
   const disconnectWebSocket = () => {
     if (wsRef.current) {
