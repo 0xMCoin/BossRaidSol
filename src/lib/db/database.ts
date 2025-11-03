@@ -4,19 +4,39 @@ import path from "path";
 // Define interfaces for data storage
 export interface Boss {
   id: number;
+  bossId: string;
   name: string;
+  status?: "ATIVO" | "INATIVO";
   maxHealth: number;
   currentHealth: number;
-  damageMultiplier: number; // Multiplier for buy trades (default 0.65)
-  healMultiplier: number; // Multiplier for sell trades (default 0.35)
+  damagePerBuy: number;
+  healPerSell: number;
+  buyWeight: number;
+  sellWeight: number;
+  damageMultiplier?: number;
+  healMultiplier?: number;
+  sprites: { idle: string; hitting: string; healing: string; dead: string };
+  isDefeated: boolean;
+  defeatedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Simplified boss data format for registration
+export interface BossRegistrationData {
+  id: string;
+  name: string;
+  hpMax: number;
+  buyWeight: number;
+  sellWeight: number;
+  buyDmg: number;
+  sellHeal: number;
   sprites: {
     idle: string;
     hitting: string;
     healing: string;
     dead: string;
   };
-  isDefeated: boolean;
-  defeatedAt?: string;
 }
 
 export interface PumpPortalTrade {
@@ -74,69 +94,6 @@ const DATA_FILE = path.join(DATA_DIR, "game-data.json");
 if (!fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
-
-// Initialize default data
-function getDefaultData(): GameData {
-  return {
-    bosses: [
-      {
-        id: 1,
-        name: "Ancient Dragon",
-        maxHealth: 100,
-        currentHealth: 100,
-        damageMultiplier: 0.65,
-        healMultiplier: 0.35,
-        sprites: {
-          idle: "/images/boss1_idle.png",
-          hitting: "/images/boss1_hitting.png",
-          healing: "/images/boss1_healing.png",
-          dead: "/images/boss1_dead.png",
-        },
-        isDefeated: false,
-      },
-      {
-        id: 2,
-        name: "Shadow Beast",
-        maxHealth: 150,
-        currentHealth: 150,
-        damageMultiplier: 0.7,
-        healMultiplier: 0.3,
-        sprites: {
-          idle: "/images/boss1_idle.png", // Using boss1 sprites as placeholder
-          hitting: "/images/boss1_hitting.png",
-          healing: "/images/boss1_healing.png",
-          dead: "/images/boss1_dead.png",
-        },
-        isDefeated: false,
-      },
-      {
-        id: 3,
-        name: "Crystal Golem",
-        maxHealth: 200,
-        currentHealth: 200,
-        damageMultiplier: 0.6,
-        healMultiplier: 0.4,
-        sprites: {
-          idle: "/images/boss1_idle.png", // Using boss1 sprites as placeholder
-          hitting: "/images/boss1_hitting.png",
-          healing: "/images/boss1_healing.png",
-          dead: "/images/boss1_dead.png",
-        },
-        isDefeated: false,
-      },
-    ],
-    trades: [],
-    gameSession: {
-      id: 1,
-      currentBossId: 1,
-      totalDamageDealt: 0,
-      totalHealApplied: 0,
-      sessionStart: new Date().toISOString(),
-      lastActivity: new Date().toISOString(),
-    },
-  };
-}
-
 // Load data from file
 function loadData(): GameData {
   try {
@@ -150,9 +107,18 @@ function loadData(): GameData {
     console.error("❌ DB: Error loading game data:", error);
   }
 
-  const defaultData = getDefaultData();
-  saveData(defaultData);
-  return defaultData;
+  return {
+    bosses: [],
+    trades: [],
+    gameSession: {
+      id: 1,
+      currentBossId: 1,
+      totalDamageDealt: 0,
+      totalHealApplied: 0,
+      sessionStart: new Date().toISOString(),
+      lastActivity: new Date().toISOString(),
+    },
+  };
 }
 
 // Save data to file
@@ -175,6 +141,64 @@ export function getBossById(id: number): Boss | null {
   return data.bosses.find((boss) => boss.id === id) || null;
 }
 
+export function getBossByBossId(bossId: string): Boss | null {
+  const data = loadData();
+  return data.bosses.find((boss) => boss.bossId === bossId) || null;
+}
+
+export function addOrUpdateBoss(
+  bossData: Omit<Boss, "id" | "createdAt" | "updatedAt">
+): Boss {
+  const data = loadData();
+  const now = new Date().toISOString();
+
+  // Find existing boss by bossId
+  const existingIndex = data.bosses.findIndex(
+    (boss) => boss.bossId === bossData.bossId
+  );
+
+  if (existingIndex !== -1) {
+    // Update existing boss
+    const existingBoss = data.bosses[existingIndex];
+    data.bosses[existingIndex] = {
+      ...existingBoss,
+      ...bossData,
+      updatedAt: now,
+    };
+    saveData(data);
+    return data.bosses[existingIndex];
+  } else {
+    // Add new boss
+    const newId = Math.max(...data.bosses.map((b) => b.id), 0) + 1;
+    const newBoss: Boss = {
+      ...bossData,
+      id: newId,
+      createdAt: now,
+      updatedAt: now,
+    };
+    data.bosses.push(newBoss);
+    saveData(data);
+    return newBoss;
+  }
+}
+
+export function registerBossFromData(bossRegData: BossRegistrationData): Boss {
+  const bossData: Omit<Boss, "id" | "createdAt" | "updatedAt"> = {
+    bossId: bossRegData.id,
+    name: bossRegData.name,
+    maxHealth: bossRegData.hpMax,
+    currentHealth: bossRegData.hpMax, // Start with full health
+    damagePerBuy: bossRegData.buyDmg,
+    healPerSell: bossRegData.sellHeal,
+    buyWeight: bossRegData.buyWeight,
+    sellWeight: bossRegData.sellWeight,
+    sprites: bossRegData.sprites,
+    isDefeated: false,
+  };
+
+  return addOrUpdateBoss(bossData);
+}
+
 export function updateBossHealth(
   id: number,
   currentHealth: number,
@@ -192,12 +216,16 @@ export function updateBossHealth(
 
   // Security: Validate health change logic
   if (currentHealth < 0 || currentHealth > boss.maxHealth) {
-    throw new Error(`Invalid health value: ${currentHealth}. Must be between 0 and ${boss.maxHealth}`);
+    throw new Error(
+      `Invalid health value: ${currentHealth}. Must be between 0 and ${boss.maxHealth}`
+    );
   }
 
   // Security: Only allow health reduction (damage) or healing to valid amounts
   if (currentHealth > oldHealth && currentHealth > boss.maxHealth) {
-    throw new Error(`Invalid health increase: ${currentHealth} > ${boss.maxHealth}`);
+    throw new Error(
+      `Invalid health increase: ${currentHealth} > ${boss.maxHealth}`
+    );
   }
 
   // Audit: Log health changes (only in production logs, not console)
@@ -209,7 +237,7 @@ export function updateBossHealth(
     oldHealth,
     newHealth: currentHealth,
     isDefeated,
-    change: currentHealth - oldHealth
+    change: currentHealth - oldHealth,
   };
 
   // In production, you might want to save this to a separate audit log file
@@ -325,6 +353,6 @@ export function getGameStats() {
 }
 
 export function resetGame() {
-  const defaultData = getDefaultData();
-  saveData(defaultData);
+  const data = loadData();
+  saveData(data);
 }

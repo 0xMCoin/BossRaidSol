@@ -4,20 +4,24 @@ import Image from "next/image";
 import type { Boss as DatabaseBoss } from "@/lib/db/database";
 
 // Security: Trade rate limiting
-let tradeTimestamps: number[] = [];
-const RATE_LIMIT = 10; // 10 trades por segundo máximo
-const RATE_WINDOW = 1000; // 1 segundo
+const tradeTimestamps: number[] = [];
+const RATE_LIMIT = 10;
+const RATE_WINDOW = 1000;
 
-// Security: Validate trade data
+// Trade processing - simplified approach to avoid race conditions
+const processedTrades = new Set<string>();
+
 const isValidTradeData = (data: any): boolean => {
+  const mint = process.env.NEXT_PUBLIC_TOKEN_MINT || "";
+  const solValue = data.solAmount || data.sol_amount || data.amount || 0;
   return (
     data.signature &&
     data.mint &&
-    typeof data.solAmount === 'number' &&
-    data.solAmount > 0 &&
-    data.solAmount < 1000 && // Limite máximo de 1000 SOL por trade
-    ['buy', 'sell'].includes(data.txType?.toLowerCase()) &&
-    data.mint === "FbAKcBJCeZgJskA2qdhtZumrtnC1R43W3JVWKthnpump" // Apenas token específico
+    typeof solValue === "number" &&
+    solValue > 0 &&
+    solValue < 1000 &&
+    ["buy", "sell"].includes(data.txType?.toLowerCase()) &&
+    data.mint === mint
   );
 };
 
@@ -35,7 +39,7 @@ const isRateLimited = (): boolean => {
 };
 
 // Security: API Configuration
-const API_KEY = process.env.NEXT_PUBLIC_BOSS_RAID_API_KEY || 'dev-key-change-in-production';
+const API_KEY = process.env.NEXT_PUBLIC_BOSS_RAID_API_KEY || "";
 
 // Security: WebSocket reconnection with limits
 let reconnectAttempts = 0;
@@ -48,14 +52,14 @@ const isValidBossState = (boss: any): boolean => {
     boss &&
     boss.id &&
     boss.name &&
-    typeof boss.currentHealth === 'number' &&
-    typeof boss.maxHealth === 'number' &&
+    typeof boss.currentHealth === "number" &&
+    typeof boss.maxHealth === "number" &&
     boss.currentHealth >= 0 &&
     boss.maxHealth > 0 &&
     boss.currentHealth <= boss.maxHealth &&
     !boss.isDefeated &&
-    boss.damageMultiplier >= 0 &&
-    boss.healMultiplier >= 0
+    (boss.damagePerBuy >= 0 || boss.damageMultiplier >= 0) &&
+    (boss.healPerSell >= 0 || boss.healMultiplier >= 0)
   );
 };
 
@@ -63,52 +67,38 @@ type BossState = "idle" | "hitting" | "healing" | "dead";
 
 export default function Home() {
   const [bossState, setBossState] = useState<BossState>("idle");
-
-  // Security: Safe WebSocket reconnection with exponential backoff
-  const safeReconnect = () => {
-    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-      reconnectAttempts++;
-      const delay = BASE_RECONNECT_DELAY * reconnectAttempts; // Exponential backoff
-      setTimeout(() => {
-        connectWebSocket();
-      }, delay);
-    }
-  };
   const [currentBoss, setCurrentBoss] = useState<DatabaseBoss | null>(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [damageText, setDamageText] = useState<string>("");
   const [healText, setHealText] = useState<string>("");
-  const wsRef = useRef<WebSocket | null>(null);
-
+  const [lastTradeActivity, setLastTradeActivity] = useState<string>("");
+  const [recentTrades, setRecentTrades] = useState<any[]>([]);
   const [trades, setTrades] = useState<any[]>([]);
   const [wsConnected, setWsConnected] = useState(false);
-  const [lastTradeActivity, setLastTradeActivity] = useState<string>("");
   const [gameSession, setGameSession] = useState<any>(null);
+  const [holders, setHolders] = useState<any[]>([]);
+  const [holdersLoading, setHoldersLoading] = useState(true);
+  const [holdersError, setHoldersError] = useState<string | null>(null);
+  const [bossDefeated, setBossDefeated] = useState(false);
+  const wsRef = useRef<WebSocket | null>(null);
 
-  const loadGameData = async () => {
-    try {
-      const bossResponse = await fetch("/api/bosses?action=current");
-      const bossData = await bossResponse.json();
-      if (bossData.boss) {
-        setCurrentBoss(bossData.boss);
-      }
-      const sessionResponse = await fetch("/api/game?action=session");
-      const sessionData = await sessionResponse.json();
-      if (sessionData.session) {
-        setGameSession(sessionData.session);
-      }
-    } catch (error) {}
-  };
-
+  // Helper functions
   const saveTradeToDatabase = async (tradeData: any) => {
     try {
-      await fetch("/api/trades", {
+      const response = await fetch("/api/trades", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(tradeData),
       });
+      if (!response.ok) {
+        console.error(
+          "Trade API failed:",
+          response.status,
+          await response.text()
+        );
+      }
     } catch (error) {
       console.error("Error saving trade:", error);
     }
@@ -118,32 +108,32 @@ export default function Home() {
     bossId: number,
     health: number,
     isDefeated: boolean = false,
-    tradeSignature?: string
+    tradeSignature?: string,
+    txType?: string
   ) => {
     try {
+      const requestData = {
+        action: "updateHealth",
+        bossId,
+        currentHealth: health,
+        isDefeated,
+        signature: tradeSignature,
+        txType,
+      };
       const response = await fetch("/api/bosses", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "x-api-key": API_KEY,
         },
-        body: JSON.stringify({
-          action: "updateHealth",
-          bossId,
-          currentHealth: health,
-          isDefeated,
-          signature: tradeSignature, // Required for security validation
-        }),
+        body: JSON.stringify(requestData),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Boss update failed:", errorData.error);
+        const errorText = await response.text();
+        console.error("Boss update failed:", response.status, errorText);
         return;
       }
-
-      // Log successful updates for audit trail
-      console.log(`Boss ${bossId} health updated to ${health}`);
     } catch (error) {
       console.error("Error updating boss:", error);
     }
@@ -175,36 +165,251 @@ export default function Home() {
     }
   };
 
+  const loadNextBoss = async () => {
+    try {
+      const bossResponse = await fetch("/api/bosses?action=current");
+      const bossData = await bossResponse.json();
+      if (bossData.boss) {
+        setCurrentBoss(bossData.boss);
+        setBossState("idle");
+        setBossDefeated(false); // Reset defeat state for new boss
+        setIsAnimating(false);
+        setDamageText("");
+        setHealText("");
+        setLastTradeActivity("");
+      } else {
+        console.warn("No boss returned from API");
+        setBossState("idle");
+      }
+    } catch (error) {
+      console.error("Error loading next boss:", error);
+    }
+  };
+
+  const processTrade = async (data: any) => {
+    try {
+      if (bossDefeated) return;
+      const bossResponse = await fetch("/api/bosses?action=current");
+      const bossData = await bossResponse.json();
+
+      if (!bossData.boss) return;
+
+      const currentBoss = bossData.boss;
+      if (currentBoss.isDefeated) return;
+
+      const solValue = data.solAmount || data.sol_amount || data.amount || 0;
+      const txType = data.txType?.toLowerCase();
+
+      if (txType === "buy" || txType === "create") {
+        const damage = solValue * 200 * currentBoss.buyWeight;
+        const newHealth = Math.max(0, currentBoss.currentHealth - damage);
+        const isDefeated = newHealth <= 0;
+
+        setBossState("hitting");
+        setIsAnimating(true);
+
+        const updatedBoss = {
+          ...currentBoss,
+          currentHealth: newHealth,
+          isDefeated,
+        };
+
+        setCurrentBoss(updatedBoss);
+        setDamageText(`-${damage.toFixed(4)}`);
+        setLastTradeActivity(`⚔️ BUY: -${damage.toFixed(4)} HP`);
+        await saveTradeToDatabase({
+          bossId: currentBoss.id,
+          signature: data.signature,
+          mint: data.mint,
+          solAmount: solValue,
+          tokenAmount: data.tokenAmount,
+          txType: data.txType,
+          damageDealt: damage,
+          healApplied: 0,
+          timestamp: new Date().toISOString(),
+        });
+        await updateBossInDatabase(
+          currentBoss.id,
+          newHealth,
+          isDefeated,
+          data.signature,
+          txType
+        );
+        await updateGameSession(damage, 0);
+        const newTrade = {
+          id: Date.now(),
+          type: "buy",
+          solAmount: solValue,
+          damage,
+          timestamp: new Date().toISOString(),
+          bossName: currentBoss.name,
+        };
+        setRecentTrades((prev: any[]) => [newTrade, ...prev.slice(0, 9)]);
+        if (isDefeated) {
+          setBossDefeated(true);
+          setBossState("dead");
+          setTimeout(() => {
+            loadNextBoss();
+          }, 5000);
+        }
+        if (!isDefeated) {
+          setTimeout(() => {
+            setIsAnimating(false);
+            setBossState("idle");
+            setDamageText("");
+            setLastTradeActivity("");
+          }, 1500);
+        }
+      } else if (txType === "sell") {
+        const heal = solValue * 200 * currentBoss.sellWeight;
+        const newHealth = Math.min(
+          currentBoss.maxHealth,
+          currentBoss.currentHealth + heal
+        );
+
+        // Update UI state
+        setBossState("healing");
+        setIsAnimating(true);
+
+        const updatedBoss = { ...currentBoss, currentHealth: newHealth };
+
+        setCurrentBoss(updatedBoss);
+        setHealText(`+${heal.toFixed(4)}`);
+        setLastTradeActivity(`💚 SELL: +${heal.toFixed(4)} HP`);
+
+        // Save trade to database
+        await saveTradeToDatabase({
+          bossId: currentBoss.id,
+          signature: data.signature,
+          mint: data.mint,
+          solAmount: solValue,
+          tokenAmount: data.tokenAmount,
+          txType: data.txType,
+          damageDealt: 0,
+          healApplied: heal,
+          timestamp: new Date().toISOString(),
+        });
+
+        // Update boss in database
+        await updateBossInDatabase(
+          currentBoss.id,
+          newHealth,
+          false,
+          data.signature,
+          txType
+        );
+
+        // Update game session
+        await updateGameSession(0, heal);
+
+        // Add to recent trades for monitor
+        const newTrade = {
+          id: Date.now(),
+          type: "sell",
+          solAmount: solValue,
+          heal,
+          timestamp: new Date().toISOString(),
+          bossName: currentBoss.name,
+        };
+        setRecentTrades((prev: any[]) => [newTrade, ...prev.slice(0, 9)]);
+
+        // Reset animation after 1.5 seconds
+        setTimeout(() => {
+          setIsAnimating(false);
+          setBossState("idle");
+          setHealText("");
+          setLastTradeActivity("");
+        }, 1500);
+      }
+
+      setTrades((prev: any[]) => [data, ...prev.slice(0, 10)]);
+    } catch (error) {
+      console.error("Error processing trade:", error);
+      throw error;
+    }
+  };
+
+  const safeReconnect = () => {
+    if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
+      reconnectAttempts++;
+      const delay = BASE_RECONNECT_DELAY * reconnectAttempts;
+      setTimeout(() => {
+        connectWebSocket();
+      }, delay);
+    }
+  };
+
+  const loadGameData = async () => {
+    try {
+      const bossResponse = await fetch("/api/bosses?action=current");
+      const bossData = await bossResponse.json();
+      if (bossData.boss) {
+        setCurrentBoss(bossData.boss);
+      }
+      const sessionResponse = await fetch("/api/game?action=session");
+      const sessionData = await sessionResponse.json();
+      if (sessionData.session) {
+        setGameSession(sessionData.session);
+      }
+    } catch (error) {
+      console.error("Error loading game data:", error);
+    }
+  };
+
+  const loadHolders = async () => {
+    try {
+      setHoldersLoading(true);
+      setHoldersError(null);
+      const response = await fetch("/api/holders?limit=50");
+      const data = await response.json();
+
+      if (data.error && !data.isFallback) {
+        setHoldersError(data.error);
+      } else {
+        setHolders(data.holders || []);
+      }
+    } catch (error) {
+      console.error("Error loading holders:", error);
+      setHoldersError("Erro ao carregar holders");
+    } finally {
+      setHoldersLoading(false);
+    }
+  };
+
   const connectWebSocket = () => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      return; // Already connected
+      return;
     }
 
     if (wsRef.current && wsRef.current.readyState === WebSocket.CONNECTING) {
-      return; // Already connecting
+      return;
     }
-
-    const ws = new WebSocket("wss://pumpportal.fun/api/data");
+    const apiKey = process.env.NEXT_PUBLIC_BOSS_RAID_API_KEY;
+    if (!apiKey) {
+      console.error("API key is not set");
+      return;
+    }
+    const ws = new WebSocket(`wss://pumpportal.fun/api/data?api-key=${apiKey}`);
     wsRef.current = ws;
 
-    // Add connection timeout
     const connectionTimeout = setTimeout(() => {
       if (ws.readyState === WebSocket.CONNECTING) {
         ws.close();
       }
-    }, 10000); // 10 second timeout
+    }, 10000);
 
     ws.onopen = () => {
       clearTimeout(connectionTimeout);
       setWsConnected(true);
-      reconnectAttempts = 0; // Reset reconnection attempts on successful connection
-
-      // Subscribe to token trades
-      const tokensToWatch = ["FbAKcBJCeZgJskA2qdhtZumrtnC1R43W3JVWKthnpump"];
-
+      reconnectAttempts = 0;
+      const mint = process.env.NEXT_PUBLIC_TOKEN_MINT || "";
+      if (!mint) {
+        console.error("Mint is not set");
+        return;
+      }
       const subscribeMessage = JSON.stringify({
         method: "subscribeTokenTrade",
-        keys: tokensToWatch,
+        keys: [mint],
       });
       ws.send(subscribeMessage);
     };
@@ -213,126 +418,19 @@ export default function Home() {
       try {
         const data = JSON.parse(event.data);
 
-        // Check if this is a trade message (multiple ways it might be formatted)
         if (data.signature && data.mint) {
-          // Security: Validate trade data and rate limiting
-          if (!isValidTradeData(data) || isRateLimited()) {
-            return; // Ignore invalid or rate limited trades
+          if (!isValidTradeData(data) || isRateLimited()) return;
+          if (processedTrades.has(data.signature)) return;
+          processedTrades.add(data.signature);
+          if (processedTrades.size > 1000) {
+            const recentTrades = Array.from(processedTrades).slice(-500);
+            processedTrades.clear();
+            recentTrades.forEach((signature) => processedTrades.add(signature));
           }
-
-          // Check if we have a valid current boss
-          if (!currentBoss || !isValidBossState(currentBoss)) {
-            return;
-          }
-
-            // Apply trade logic to boss health using current boss multipliers
-            // Try different field names for SOL amount
-            const solValue =
-              data.solAmount || data.sol_amount || data.amount || 0;
-
-            // Handle different txType formats
-            const txType = data.txType?.toLowerCase();
-
-            if (txType === "buy" || txType === "create") {
-              const damage = solValue * currentBoss.damageMultiplier;
-
-              // Set boss to hitting state temporarily
-              setBossState("hitting");
-              setIsAnimating(true);
-
-              const newHealth = Math.max(0, currentBoss.currentHealth - damage);
-              const isDefeated = newHealth <= 0;
-
-              const updatedBoss = {
-                ...currentBoss,
-                currentHealth: newHealth,
-                isDefeated,
-              };
-
-              setCurrentBoss(updatedBoss);
-
-              setDamageText(`-${damage.toFixed(4)}`);
-              setLastTradeActivity(`⚔️ BUY: -${damage.toFixed(4)} HP`);
-
-              // Save trade to database
-              saveTradeToDatabase({
-                bossId: currentBoss.id,
-                signature: data.signature,
-                mint: data.mint,
-                solAmount: solValue,
-                tokenAmount: data.tokenAmount,
-                txType: data.txType,
-                damageDealt: damage,
-                healApplied: 0,
-                timestamp: new Date().toISOString(),
-              });
-
-              // Update boss in database
-              updateBossInDatabase(currentBoss.id, newHealth, isDefeated, data.signature);
-
-              // Update game session
-              updateGameSession(damage, 0);
-
-              // Check if boss died and move to next boss
-              if (isDefeated) {
-                setTimeout(() => {
-                  loadNextBoss();
-                }, 4000);
-              }
-
-              // Reset animation after 1.5 seconds
-              setTimeout(() => {
-                setIsAnimating(false);
-                setBossState(isDefeated ? "dead" : "idle");
-                setDamageText("");
-                setLastTradeActivity("");
-              }, 1500);
-            } else if (txType === "sell") {
-              const heal = solValue * currentBoss.healMultiplier;
-              setBossState("healing");
-              setIsAnimating(true);
-
-              const newHealth = Math.min(
-                currentBoss.maxHealth,
-                currentBoss.currentHealth + heal
-              );
-
-              const updatedBoss = { ...currentBoss, currentHealth: newHealth };
-
-              setCurrentBoss(updatedBoss);
-
-              setHealText(`+${heal.toFixed(4)}`);
-              setLastTradeActivity(`💚 SELL: +${heal.toFixed(4)} HP`);
-
-              // Save trade to database
-              saveTradeToDatabase({
-                bossId: currentBoss.id,
-                signature: data.signature,
-                mint: data.mint,
-                solAmount: solValue,
-                tokenAmount: data.tokenAmount,
-                txType: data.txType,
-                damageDealt: 0,
-                healApplied: heal,
-                timestamp: new Date().toISOString(),
-              });
-
-              // Update boss in database
-              updateBossInDatabase(currentBoss.id, newHealth, false, data.signature);
-
-              // Update game session
-              updateGameSession(0, heal);
-
-              // Reset animation after 1.5 seconds
-              setTimeout(() => {
-                setIsAnimating(false);
-                setBossState("idle");
-                setHealText("");
-                setLastTradeActivity("");
-              }, 1500);
-            }
-
-          setTrades((prev) => [data, ...prev.slice(0, 10)]);
+          processTrade(data).catch((error) => {
+            console.error("Trade processing failed:", error);
+            processedTrades.delete(data.signature);
+          });
         }
       } catch (error) {
         console.error("❌ Error parsing WebSocket message:", error);
@@ -342,7 +440,6 @@ export default function Home() {
 
     ws.onclose = (event) => {
       setWsConnected(false);
-      // Safe auto-reconnect with exponential backoff
       safeReconnect();
     };
 
@@ -359,24 +456,9 @@ export default function Home() {
     }
   };
 
-  // Load next boss when current one is defeated
-  const loadNextBoss = async () => {
-    try {
-      const bossResponse = await fetch("/api/bosses?action=current");
-      const bossData = await bossResponse.json();
-      if (bossData.boss) {
-        setCurrentBoss(bossData.boss);
-        setBossState("idle");
-      } else {
-        setBossState("idle");
-      }
-    } catch (error) {
-      console.error("Error loading next boss:", error);
-    }
-  };
-
   useEffect(() => {
     loadGameData();
+    loadHolders();
 
     const initTimer = setTimeout(() => {
       connectWebSocket();
@@ -388,22 +470,21 @@ export default function Home() {
     };
   }, []);
 
-  // Health check - ensure WebSocket stays connected
   useEffect(() => {
     const healthCheck = setInterval(() => {
       if (wsRef.current) {
         const state = wsRef.current.readyState;
         if (state === WebSocket.CLOSED || state === WebSocket.CLOSING) {
-          reconnectAttempts = 0; // Reset attempts for health check reconnect
+          reconnectAttempts = 0;
           connectWebSocket();
         } else if (state === WebSocket.OPEN && !wsConnected) {
           setWsConnected(true);
         }
       } else {
-        reconnectAttempts = 0; // Reset attempts for health check reconnect
+        reconnectAttempts = 0;
         connectWebSocket();
       }
-    }, 30000); // Check every 30 seconds
+    }, 30000);
 
     return () => clearInterval(healthCheck);
   }, [wsConnected]);
@@ -412,9 +493,18 @@ export default function Home() {
     if (currentBoss && !wsConnected) {
       connectWebSocket();
     } else if (currentBoss) {
-      // Boss already available monitoring
     }
   }, [currentBoss]);
+
+  useEffect(() => {
+    const holdersRefreshInterval = setInterval(() => {
+      if (!holdersLoading) {
+        loadHolders();
+      }
+    }, 5 * 60 * 1000);
+
+    return () => clearInterval(holdersRefreshInterval);
+  }, [holdersLoading]);
 
   return (
     <div className="min-h-screen bg-black text-gray-300 overflow-hidden relative">
@@ -479,7 +569,7 @@ export default function Home() {
 
         {/* Main Title */}
         <h1 className="text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-linear-to-r from-white via-purple-200 to-white tracking-wider mb-2">
-          BOSS RAID
+          Boss: {currentBoss ? currentBoss.name : "Loading..."}
         </h1>
 
         {/* Subtitle */}
@@ -488,17 +578,110 @@ export default function Home() {
         </p>
       </div>
 
-      <div className="relative z-10 boss-raid-layout flex flex-col lg:flex-row items-center justify-center px-4">
+      <div className="relative z-10 boss-raid-layout flex flex-col xl:flex-row items-center justify-between px-4 gap-6 max-w-7xl mx-auto">
+        {/* Left Panel - Top Holders */}
+        <div className="left-panel w-full xl:w-80 flex flex-col space-y-4">
+          <div className="bg-gray-900/40 backdrop-blur-sm border border-purple-500/20 rounded-xl p-4 h-96 xl:h-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-purple-300 flex items-center gap-2">
+                Top Holders
+              </h3>
+              <div className="flex items-center gap-2">
+                <div className="text-xs text-purple-400 bg-purple-900/30 px-2 py-1 rounded-full">
+                  {holdersLoading ? "LOADING" : holdersError ? "ERROR" : "LIVE"}
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2 overflow-y-auto h-72 xl:h-80 pr-2">
+              {/* Header */}
+              <div className="flex justify-between text-xs text-gray-400 border-b border-gray-700 pb-2 mb-2">
+                <span>Holder</span>
+                <span>Amount</span>
+              </div>
+
+              {/* Loading State */}
+              {holdersLoading && (
+                <div className="text-center text-gray-500 py-8">
+                  <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-2"></div>
+                  <p className="text-sm">Loading holders...</p>
+                  <p className="text-xs mt-1">Querying blockchain</p>
+                </div>
+              )}
+
+              {/* Error State */}
+              {holdersError && !holdersLoading && (
+                <div className="text-center text-red-400 py-8">
+                  <div className="text-2xl mb-2">⚠️</div>
+                  <p className="text-sm">Error loading holders</p>
+                  <p className="text-xs mt-1">{holdersError}</p>
+                  <button
+                    onClick={loadHolders}
+                    className="mt-2 text-xs bg-red-500/20 hover:bg-red-500/30 px-2 py-1 rounded transition-colors"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+
+              {/* Holders List */}
+              {!holdersLoading &&
+                !holdersError &&
+                holders.length > 0 &&
+                holders.map((holder) => (
+                  <div
+                    key={holder.address}
+                    className="flex justify-between items-center py-2 border-b border-gray-800/50 hover:bg-gray-800/20 rounded px-2 -mx-2 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                          holder.rank === 1
+                            ? "bg-yellow-500/20 text-yellow-300 border border-yellow-500/30"
+                            : holder.rank === 2
+                            ? "bg-gray-400/20 text-gray-300 border border-gray-400/30"
+                            : holder.rank === 3
+                            ? "bg-orange-500/20 text-orange-300 border border-orange-500/30"
+                            : "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                        }`}
+                      >
+                        {holder.rank <= 3 ? "🏆" : holder.rank}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm text-gray-300 font-mono">
+                          {holder.shortAddress}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {holder.percentage.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-sm text-purple-300 font-bold">
+                      {holder.formattedAmount}
+                    </span>
+                  </div>
+                ))}
+
+              {/* Empty State */}
+              {!holdersLoading && !holdersError && holders.length === 0 && (
+                <div className="text-center text-gray-500 py-8">
+                  <div className="text-2xl mb-2">📊</div>
+                  <p className="text-sm">No holders found</p>
+                  <p className="text-xs mt-1">Token may have no holders yet</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* Central Boss Arena */}
-        <div className="boss-central flex-1 flex flex-col items-center justify-center max-w-2xl">
+        <div className="boss-central flex-1 xl:flex-none xl:w-96 flex flex-col items-center justify-center max-w-2xl">
           {/* Main Boss Display */}
           {currentBoss ? (
             <div className="relative animate-fadeIn">
               {/* Clean Health UI - Above Boss */}
               <div className="mb-6 flex flex-col items-center space-y-3">
                 {/* Boss Name */}
-                <h3 className="text-2xl font-bold text-white">
-                  {currentBoss.name}
+                <h3 className="text-2xl font-bold text-white text-center">
                   <div className="flex items-center justify-center mb-10">
                     <div className="w-12 h-px bg-linear-to-r from-transparent via-blue-500/60 to-transparent" />
                     <div className="mx-3 text-blue-400 text-xs">◆</div>
@@ -507,7 +690,7 @@ export default function Home() {
                 </h3>
 
                 {/* Boss Arena Frame */}
-              <div className="relative flex items-center justify-center">
+                <div className="relative flex items-center justify-center">
                   {/* Outer Frame */}
                   <div className="absolute inset-0 scale-110">
                     {/* Hexagonal Border */}
@@ -540,59 +723,59 @@ export default function Home() {
                   <div className="relative z-10 overflow-hidden rounded-lg">
                     <div
                       className={`relative rounded-lg transition-all duration-500 ease-in-out transform ${
-                      bossState === "dead"
-                        ? "grayscale opacity-50 scale-90 filter brightness-50"
-                        : bossState === "hitting"
-                        ? "scale-110 brightness-110"
-                        : bossState === "healing"
-                        ? "scale-105 brightness-110"
-                        : "scale-100 brightness-100"
-                    } ${isAnimating ? "animate-pulse" : ""}`}
-                  >
-                    <Image
-                      src={currentBoss.sprites[bossState]}
-                      alt={`Boss ${currentBoss.name} ${bossState}`}
+                        bossState === "dead"
+                          ? "grayscale opacity-50 scale-90 filter brightness-50"
+                          : bossState === "hitting"
+                          ? "scale-110 brightness-110"
+                          : bossState === "healing"
+                          ? "scale-105 brightness-110"
+                          : "scale-100 brightness-100"
+                      } ${isAnimating ? "animate-pulse" : ""}`}
+                    >
+                      <Image
+                        src={currentBoss.sprites[bossState]}
+                        alt={`Boss ${currentBoss.name} ${bossState}`}
                         width={350}
                         height={350}
-                        className="boss-image drop-shadow-2xl rounded-lg transition-all duration-700 ease-out"
-                      priority
-                    />
+                        className="boss-image drop-shadow-2xl rounded-lg transition-all duration-700 ease-out scale-125"
+                        priority
+                      />
 
-                    {/* Boss State Overlay Effects */}
-                    {bossState === "hitting" && (
+                      {/* Boss State Overlay Effects */}
+                      {bossState === "hitting" && (
                         <div className="absolute inset-0 bg-red-500/15 rounded-full animate-ping" />
-                    )}
-                    {bossState === "healing" && (
+                      )}
+                      {bossState === "healing" && (
                         <div className="absolute inset-0 bg-green-500/15 rounded-full animate-pulse" />
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                {damageText && (
-                  <div className="absolute top-1/4 left-1/2 transform -translate-x-1/2 animate-bounce">
-                    <div className="relative">
-                      <span className="text-red-400 text-6xl font-black animate-pulse drop-shadow-2xl">
-                        {damageText}
-                      </span>
-                      <span className="absolute inset-0 text-red-400 text-6xl font-black blur-md animate-pulse">
-                        {damageText}
-                      </span>
+                  {damageText && (
+                    <div className="absolute top-1/4 left-1/2 transform -translate-x-1/2 animate-bounce">
+                      <div className="relative">
+                        <span className="text-red-400 text-6xl font-black animate-pulse drop-shadow-2xl">
+                          {damageText}
+                        </span>
+                        <span className="absolute inset-0 text-red-400 text-6xl font-black blur-md animate-pulse">
+                          {damageText}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                )}
-                {healText && (
-                  <div className="absolute top-1/4 left-1/2 transform -translate-x-1/2 animate-bounce">
-                    <div className="relative">
-                      <span className="text-green-400 text-6xl font-black animate-pulse drop-shadow-2xl">
-                        {healText}
-                      </span>
-                      <span className="absolute inset-0 text-green-400 text-6xl font-black blur-md animate-pulse">
-                        {healText}
-                      </span>
+                  )}
+                  {healText && (
+                    <div className="absolute top-1/4 left-1/2 transform -translate-x-1/2 animate-bounce">
+                      <div className="relative">
+                        <span className="text-green-400 text-6xl font-black animate-pulse drop-shadow-2xl">
+                          {healText}
+                        </span>
+                        <span className="absolute inset-0 text-green-400 text-6xl font-black blur-md animate-pulse">
+                          {healText}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
 
                 {/* Creative Health Bar UI */}
                 <div className="w-96 max-w-lg mt-10">
@@ -671,53 +854,6 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-
-                {/* Creative Multipliers */}
-                <div className="flex gap-8 mt-6">
-                  {/* Damage Multiplier */}
-                  <div className="relative">
-                    <div className="flex items-center gap-3 bg-red-900/20 border border-red-500/30 rounded-lg px-4 py-2 backdrop-blur-sm">
-                      <div className="relative">
-                        <div className="w-8 h-8 bg-red-500/20 border border-red-400/50 rounded-full flex items-center justify-center">
-                          <span className="text-red-400 text-lg">⚔️</span>
-                        </div>
-                        <div className="absolute -inset-1 bg-red-500/20 rounded-full animate-ping" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-red-400 font-bold text-lg">
-                          {currentBoss.damageMultiplier}x
-                        </span>
-                        <span className="text-red-300/80 text-xs font-medium">
-                          DAMAGE
-                        </span>
-                      </div>
-                    </div>
-                    {/* Corner accent */}
-                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-red-400/60 rounded-full" />
-                  </div>
-
-                  {/* Heal Multiplier */}
-                  <div className="relative">
-                    <div className="flex items-center gap-3 bg-green-900/20 border border-green-500/30 rounded-lg px-4 py-2 backdrop-blur-sm">
-                      <div className="relative">
-                        <div className="w-8 h-8 bg-green-500/20 border border-green-400/50 rounded-full flex items-center justify-center">
-                          <span className="text-green-400 text-lg">💚</span>
-                        </div>
-                        <div className="absolute -inset-1 bg-green-500/20 rounded-full animate-ping" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-green-400 font-bold text-lg">
-                          {currentBoss.healMultiplier}x
-                        </span>
-                        <span className="text-green-300/80 text-xs font-medium">
-                          HEAL
-                        </span>
-                      </div>
-                    </div>
-                    {/* Corner accent */}
-                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-400/60 rounded-full" />
-                  </div>
-                </div>
               </div>
             </div>
           ) : (
@@ -752,6 +888,71 @@ export default function Home() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Right Panel - Trade Monitor */}
+        <div className="right-panel w-full xl:w-80 flex flex-col space-y-4">
+          <div className="bg-gray-900/40 backdrop-blur-sm border border-purple-500/20 rounded-xl p-4 h-96 xl:h-full">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-purple-300 flex items-center gap-2">
+                Trade Monitor
+              </h3>
+              <div className="text-xs text-purple-400 bg-purple-900/30 px-2 py-1 rounded-full">
+                LIVE
+              </div>
+            </div>
+            <div className="space-y-2 overflow-y-auto h-72 xl:h-80 pr-2">
+              {recentTrades.length === 0 ? (
+                <div className="text-center text-gray-500 py-8">
+                  <p className="text-sm">Trades will appear here</p>
+                  <p className="text-xs mt-1">Waiting for activity...</p>
+                </div>
+              ) : (
+                recentTrades.map((trade, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center justify-between py-2 border-b border-gray-800/30"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                          trade.type === "buy"
+                            ? "bg-red-500/20 text-red-300 border border-red-500/30"
+                            : "bg-green-500/20 text-green-300 border border-green-500/30"
+                        }`}
+                      >
+                        {trade.type === "buy" ? "🗡️" : "💚"}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-gray-300">
+                          {trade.solAmount.toFixed(4)} SOL
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {new Date(trade.timestamp).toLocaleTimeString()}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div
+                        className={`text-sm font-bold ${
+                          trade.type === "buy"
+                            ? "text-red-400"
+                            : "text-green-400"
+                        }`}
+                      >
+                        {trade.type === "buy"
+                          ? `-${Math.round(trade.damage)} HP`
+                          : `+${Math.round(trade.heal)} HP`}
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {trade.bossName}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

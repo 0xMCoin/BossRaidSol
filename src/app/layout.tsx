@@ -75,7 +75,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
       className={`scroll-smooth antialiased ${sora.variable} ${beVietnamPro.variable}`}
     >
       <head>
-        <link rel="manifest" href="/manifest.json" />
         <link rel="icon" href="/images/logo.png" />
         <meta name="color-scheme" content="dark" />
       </head>
