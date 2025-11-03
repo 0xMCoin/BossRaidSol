@@ -22,36 +22,6 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // For POST requests to protected routes, validate API key
-  if (request.method === "POST") {
-    const apiKey = request.headers.get("x-api-key");
-
-    if (!apiKey || apiKey !== API_KEY) {
-      return NextResponse.json(
-        { error: "Unauthorized - Invalid API Key" },
-        { status: 401 }
-      );
-    }
-
-    // Additional origin validation
-    const origin = request.headers.get("origin");
-    if (origin && !ALLOWED_ORIGINS.includes(origin)) {
-      return NextResponse.json(
-        { error: "Unauthorized - Invalid Origin" },
-        { status: 401 }
-      );
-    }
-
-    // Basic bot protection via User-Agent
-    const userAgent = request.headers.get("user-agent");
-    if (!userAgent || userAgent.length < 10) {
-      return NextResponse.json(
-        { error: "Unauthorized - Invalid User Agent" },
-        { status: 401 }
-      );
-    }
-  }
-
   return NextResponse.next();
 }
 
