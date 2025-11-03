@@ -3,13 +3,52 @@ import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import type { Boss as DatabaseBoss } from "@/lib/db/database";
 
-// Security: Trade rate limiting
 const tradeTimestamps: number[] = [];
 const RATE_LIMIT = 10;
 const RATE_WINDOW = 1000;
 
-// Trade processing - simplified approach to avoid race conditions
 const processedTrades = new Set<string>();
+
+// Sistema de fila para limitar requisições pendentes
+const requestQueue: Array<() => Promise<any>> = [];
+let activeRequests = 0;
+const MAX_CONCURRENT_REQUESTS = 3;
+
+const processQueue = async () => {
+  if (activeRequests >= MAX_CONCURRENT_REQUESTS || requestQueue.length === 0) {
+    return;
+  }
+
+  const nextRequest = requestQueue.shift();
+  if (!nextRequest) return;
+
+  activeRequests++;
+  try {
+    await nextRequest();
+  } catch (error) {
+    console.error("Queue request error:", error);
+  } finally {
+    activeRequests--;
+    // Processar próximo item da fila
+    processQueue();
+  }
+};
+
+const queueRequest = <T extends unknown>(
+  requestFn: () => Promise<T>
+): Promise<T> => {
+  return new Promise((resolve, reject) => {
+    requestQueue.push(async () => {
+      try {
+        const result = await requestFn();
+        resolve(result);
+      } catch (error) {
+        reject(error);
+      }
+    });
+    processQueue();
+  });
+};
 
 const isValidTradeData = (data: any): boolean => {
   const mint = process.env.NEXT_PUBLIC_TOKEN_MINT || "";
@@ -25,12 +64,9 @@ const isValidTradeData = (data: any): boolean => {
   );
 };
 
-// Security: Check rate limit
 const isRateLimited = (): boolean => {
   const now = Date.now();
   tradeTimestamps.push(now);
-
-  // Remove trades antigos (último segundo)
   while (tradeTimestamps.length > 0 && tradeTimestamps[0] < now - RATE_WINDOW) {
     tradeTimestamps.shift();
   }
@@ -38,30 +74,11 @@ const isRateLimited = (): boolean => {
   return tradeTimestamps.length > RATE_LIMIT;
 };
 
-// Security: API Configuration
 const API_KEY = process.env.NEXT_PUBLIC_BOSS_RAID_API_KEY || "";
 
-// Security: WebSocket reconnection with limits
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 5;
-const BASE_RECONNECT_DELAY = 1000; // 1 second
-
-// Security: Validate boss state before processing trades
-const isValidBossState = (boss: any): boolean => {
-  return (
-    boss &&
-    boss.id &&
-    boss.name &&
-    typeof boss.currentHealth === "number" &&
-    typeof boss.maxHealth === "number" &&
-    boss.currentHealth >= 0 &&
-    boss.maxHealth > 0 &&
-    boss.currentHealth <= boss.maxHealth &&
-    !boss.isDefeated &&
-    (boss.damagePerBuy >= 0 || boss.damageMultiplier >= 0) &&
-    (boss.healPerSell >= 0 || boss.healMultiplier >= 0)
-  );
-};
+const BASE_RECONNECT_DELAY = 1000;
 
 type BossState = "idle" | "hitting" | "healing" | "dead";
 
@@ -71,9 +88,7 @@ export default function Home() {
   const [isAnimating, setIsAnimating] = useState(false);
   const [damageText, setDamageText] = useState<string>("");
   const [healText, setHealText] = useState<string>("");
-  const [lastTradeActivity, setLastTradeActivity] = useState<string>("");
   const [recentTrades, setRecentTrades] = useState<any[]>([]);
-  const [trades, setTrades] = useState<any[]>([]);
   const [wsConnected, setWsConnected] = useState(false);
   const [gameSession, setGameSession] = useState<any>(null);
   const [holders, setHolders] = useState<any[]>([]);
@@ -82,26 +97,28 @@ export default function Home() {
   const [bossDefeated, setBossDefeated] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
 
-  // Helper functions
+  // Helper functions - Versões otimizadas com fila
   const saveTradeToDatabase = async (tradeData: any) => {
-    try {
-      const response = await fetch("/api/trades", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(tradeData),
-      });
-      if (!response.ok) {
-        console.error(
-          "Trade API failed:",
-          response.status,
-          await response.text()
-        );
+    return queueRequest(async () => {
+      try {
+        const response = await fetch("/api/trades", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(tradeData),
+        });
+        if (!response.ok) {
+          console.error(
+            "Trade API failed:",
+            response.status,
+            await response.text()
+          );
+        }
+      } catch (error) {
+        console.error("Error saving trade:", error);
       }
-    } catch (error) {
-      console.error("Error saving trade:", error);
-    }
+    });
   };
 
   const updateBossInDatabase = async (
@@ -111,32 +128,38 @@ export default function Home() {
     tradeSignature?: string,
     txType?: string
   ) => {
-    try {
-      const requestData = {
-        action: "updateHealth",
-        bossId,
-        currentHealth: health,
-        isDefeated,
-        signature: tradeSignature,
-        txType,
-      };
-      const response = await fetch("/api/bosses", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": API_KEY,
-        },
-        body: JSON.stringify(requestData),
-      });
+    return queueRequest(async () => {
+      try {
+        const requestData = {
+          action: "updateHealth",
+          bossId,
+          currentHealth: health,
+          isDefeated,
+          signature: tradeSignature,
+          txType,
+        };
+        const response = await fetch("/api/bosses", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-api-key": API_KEY,
+          },
+          body: JSON.stringify(requestData),
+        });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error("Boss update failed:", response.status, errorText);
-        return;
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Boss update failed:", response.status, errorText);
+          return null;
+        }
+
+        const responseData = await response.json();
+        return responseData;
+      } catch (error) {
+        console.error("Error updating boss:", error);
+        return null;
       }
-    } catch (error) {
-      console.error("Error updating boss:", error);
-    }
+    });
   };
 
   const updateGameSession = async (
@@ -146,23 +169,25 @@ export default function Home() {
   ) => {
     if (!gameSession) return;
 
-    try {
-      await fetch("/api/game", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          action: "updateSession",
-          sessionId: gameSession.id,
-          damageDealt,
-          healApplied,
-          newBossId,
-        }),
-      });
-    } catch (error) {
-      console.error("Error updating game session:", error);
-    }
+    return queueRequest(async () => {
+      try {
+        await fetch("/api/game", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            action: "updateSession",
+            sessionId: gameSession.id,
+            damageDealt,
+            healApplied,
+            newBossId,
+          }),
+        });
+      } catch (error) {
+        console.error("Error updating game session:", error);
+      }
+    });
   };
 
   const loadNextBoss = async () => {
@@ -176,7 +201,6 @@ export default function Home() {
         setIsAnimating(false);
         setDamageText("");
         setHealText("");
-        setLastTradeActivity("");
       } else {
         console.warn("No boss returned from API");
         setBossState("idle");
@@ -189,22 +213,20 @@ export default function Home() {
   const processTrade = async (data: any) => {
     try {
       if (bossDefeated) return;
-      const bossResponse = await fetch("/api/bosses?action=current");
-      const bossData = await bossResponse.json();
 
-      if (!bossData.boss) return;
-
-      const currentBoss = bossData.boss;
+      // Usar estado local ao invés de fazer fetch novamente
+      if (!currentBoss) return;
       if (currentBoss.isDefeated) return;
 
       const solValue = data.solAmount || data.sol_amount || data.amount || 0;
       const txType = data.txType?.toLowerCase();
 
       if (txType === "buy" || txType === "create") {
-        const damage = solValue * 200 * currentBoss.buyWeight;
+        const damage = solValue * 200 * 2; /*  currentBoss.buyWeight; */
         const newHealth = Math.max(0, currentBoss.currentHealth - damage);
         const isDefeated = newHealth <= 0;
 
+        // Atualizar UI primeiro para resposta imediata
         setBossState("hitting");
         setIsAnimating(true);
 
@@ -216,26 +238,8 @@ export default function Home() {
 
         setCurrentBoss(updatedBoss);
         setDamageText(`-${damage.toFixed(4)}`);
-        setLastTradeActivity(`⚔️ BUY: -${damage.toFixed(4)} HP`);
-        await saveTradeToDatabase({
-          bossId: currentBoss.id,
-          signature: data.signature,
-          mint: data.mint,
-          solAmount: solValue,
-          tokenAmount: data.tokenAmount,
-          txType: data.txType,
-          damageDealt: damage,
-          healApplied: 0,
-          timestamp: new Date().toISOString(),
-        });
-        await updateBossInDatabase(
-          currentBoss.id,
-          newHealth,
-          isDefeated,
-          data.signature,
-          txType
-        );
-        await updateGameSession(damage, 0);
+
+        // Adicionar trade ao monitor imediatamente
         const newTrade = {
           id: Date.now(),
           type: "buy",
@@ -245,19 +249,43 @@ export default function Home() {
           bossName: currentBoss.name,
         };
         setRecentTrades((prev: any[]) => [newTrade, ...prev.slice(0, 9)]);
+
+        // Chamadas ao servidor em paralelo (sem bloquear UI)
+        Promise.all([
+          saveTradeToDatabase({
+            bossId: currentBoss.id,
+            signature: data.signature,
+            mint: data.mint,
+            solAmount: solValue,
+            tokenAmount: data.tokenAmount,
+            txType: data.txType,
+            damageDealt: damage,
+            healApplied: 0,
+            timestamp: new Date().toISOString(),
+          }),
+          updateBossInDatabase(
+            currentBoss.id,
+            newHealth,
+            isDefeated,
+            data.signature,
+            txType
+          ),
+          updateGameSession(damage, 0),
+        ]).catch((error) => {
+          console.error("Error syncing trade to server:", error);
+        });
+
         if (isDefeated) {
           setBossDefeated(true);
           setBossState("dead");
           setTimeout(() => {
             loadNextBoss();
           }, 5000);
-        }
-        if (!isDefeated) {
+        } else {
           setTimeout(() => {
             setIsAnimating(false);
             setBossState("idle");
             setDamageText("");
-            setLastTradeActivity("");
           }, 1500);
         }
       } else if (txType === "sell") {
@@ -267,7 +295,7 @@ export default function Home() {
           currentBoss.currentHealth + heal
         );
 
-        // Update UI state
+        // Atualizar UI primeiro para resposta imediata
         setBossState("healing");
         setIsAnimating(true);
 
@@ -275,34 +303,8 @@ export default function Home() {
 
         setCurrentBoss(updatedBoss);
         setHealText(`+${heal.toFixed(4)}`);
-        setLastTradeActivity(`💚 SELL: +${heal.toFixed(4)} HP`);
 
-        // Save trade to database
-        await saveTradeToDatabase({
-          bossId: currentBoss.id,
-          signature: data.signature,
-          mint: data.mint,
-          solAmount: solValue,
-          tokenAmount: data.tokenAmount,
-          txType: data.txType,
-          damageDealt: 0,
-          healApplied: heal,
-          timestamp: new Date().toISOString(),
-        });
-
-        // Update boss in database
-        await updateBossInDatabase(
-          currentBoss.id,
-          newHealth,
-          false,
-          data.signature,
-          txType
-        );
-
-        // Update game session
-        await updateGameSession(0, heal);
-
-        // Add to recent trades for monitor
+        // Adicionar trade ao monitor imediatamente
         const newTrade = {
           id: Date.now(),
           type: "sell",
@@ -313,16 +315,37 @@ export default function Home() {
         };
         setRecentTrades((prev: any[]) => [newTrade, ...prev.slice(0, 9)]);
 
-        // Reset animation after 1.5 seconds
+        // Chamadas ao servidor em paralelo (sem bloquear UI)
+        Promise.all([
+          saveTradeToDatabase({
+            bossId: currentBoss.id,
+            signature: data.signature,
+            mint: data.mint,
+            solAmount: solValue,
+            tokenAmount: data.tokenAmount,
+            txType: data.txType,
+            damageDealt: 0,
+            healApplied: heal,
+            timestamp: new Date().toISOString(),
+          }),
+          updateBossInDatabase(
+            currentBoss.id,
+            newHealth,
+            false,
+            data.signature,
+            txType
+          ),
+          updateGameSession(0, heal),
+        ]).catch((error) => {
+          console.error("Error syncing trade to server:", error);
+        });
+
         setTimeout(() => {
           setIsAnimating(false);
           setBossState("idle");
           setHealText("");
-          setLastTradeActivity("");
         }, 1500);
       }
-
-      setTrades((prev: any[]) => [data, ...prev.slice(0, 10)]);
     } catch (error) {
       console.error("Error processing trade:", error);
       throw error;

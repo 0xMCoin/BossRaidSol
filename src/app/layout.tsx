@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     images: [
       {
-        url: "/images/hero_bg.png",
+        url: "/images/hero_bg.jpg",
         width: 1200,
         height: 630,
         alt: "Boss Raid",
@@ -51,15 +51,15 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Boss Raid",
     description: "Real-time trading battle on Solana",
-    images: ["/images/hero_bg.png"],
+    images: ["/hero_bg.jpg"],
   },
   icons: {
     icon: [
-      { url: "/images/logo.png", sizes: "64x64", type: "image/png" },
-      { url: "/images/logo.png", sizes: "192x192", type: "image/png" },
-      { url: "/images/logo.png", sizes: "512x512", type: "image/png" },
+      { url: "/logo.jpg", sizes: "64x64", type: "image/png" },
+      { url: "/logo.jpg", sizes: "192x192", type: "image/png" },
+      { url: "/logo.jpg", sizes: "512x512", type: "image/png" },
     ],
-    apple: [{ url: "/images/logo.png", sizes: "180x180", type: "image/png" }],
+    apple: [{ url: "/logo.jpg", sizes: "180x180", type: "image/png" }],
   },
 };
 
@@ -75,7 +75,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
       className={`scroll-smooth antialiased ${sora.variable} ${beVietnamPro.variable}`}
     >
       <head>
-        <link rel="icon" href="/images/logo.png" />
+        <link rel="icon" href="/logo.jpg" />
         <meta name="color-scheme" content="dark" />
       </head>
       <body className="min-h-screen bg-background text-foreground flex flex-col">
