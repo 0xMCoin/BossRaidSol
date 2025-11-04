@@ -232,165 +232,170 @@ export default function Home() {
 
   const processTrade = useCallback(async (data: any) => {
     try {
-      // Usar refs para sempre ter valores atuais
       if (bossDefeatedRef.current) {
-        console.log("🚫 Trade ignorado: boss já derrotado");
         return;
       }
 
       const currentBoss = currentBossRef.current;
       if (!currentBoss) {
-        console.log("🚫 Trade ignorado: nenhum boss carregado");
         return;
       }
       if (currentBoss.isDefeated) {
-        console.log("🚫 Trade ignorado: boss já derrotado");
         return;
       }
-
-      console.log("✅ Processando trade:", {
-        signature: data.signature?.substring(0, 8) + "...",
-        type: data.txType,
-        solAmount: data.solAmount || data.sol_amount || data.amount,
-      });
 
       const solValue = data.solAmount || data.sol_amount || data.amount || 0;
       const txType = data.txType?.toLowerCase();
 
       if (txType === "buy" || txType === "create") {
-        const damage = solValue * 200 * currentBoss.buyWeight;
-        const newHealth = Math.max(0, currentBoss.currentHealth - damage);
-        const isDefeated = newHealth <= 0;
-
-        // Atualizar UI primeiro para resposta imediata
-        setBossState("hitting");
-        setIsAnimating(true);
-
-        const updatedBoss = {
-          ...currentBoss,
-          currentHealth: newHealth,
-          isDefeated,
-        };
-
-        setCurrentBoss(updatedBoss);
-        setDamageText(`-${damage.toFixed(4)}`);
-
-        // Adicionar trade ao monitor imediatamente
-        const newTrade = {
-          id: Date.now(),
-          type: "buy",
-          solAmount: solValue,
-          damage,
-          timestamp: new Date().toISOString(),
-          bossName: currentBoss.name,
-        };
-        console.log("📊 Adicionando trade ao monitor:", newTrade);
-        setRecentTrades((prev: any[]) => {
-          const updated = [newTrade, ...prev.slice(0, 9)];
-          console.log("📊 Trades atualizados, total:", updated.length);
-          return updated;
-        });
-
-        // Chamadas ao servidor em paralelo (sem bloquear UI)
-        Promise.all([
-          saveTradeToDatabase({
-            bossId: currentBoss.id,
-            signature: data.signature,
-            mint: data.mint,
-            solAmount: solValue,
-            tokenAmount: data.tokenAmount,
-            txType: data.txType,
-            damageDealt: damage,
-            healApplied: 0,
-            timestamp: new Date().toISOString(),
-          }),
-          updateBossInDatabase(
-            currentBoss.id,
-            newHealth,
+        // Usar atualização funcional para garantir que sempre usamos o valor mais recente
+        setCurrentBoss((prevBoss) => {
+          if (!prevBoss) return prevBoss;
+          
+          const damage = solValue * 200 * prevBoss.buyWeight;
+          
+          const newHealth = Math.max(0, prevBoss.currentHealth - damage);
+          const isDefeated = newHealth <= 0;
+          
+          const updatedBoss = {
+            ...prevBoss,
+            currentHealth: newHealth,
             isDefeated,
-            data.signature,
-            txType
-          ),
-          updateGameSession(damage, 0),
-        ]).catch((error) => {
-          console.error("Error syncing trade to server:", error);
-        });
+          };
+          
+          // Atualizar ref imediatamente
+          currentBossRef.current = updatedBoss;
 
-        if (isDefeated) {
-          setBossDefeated(true);
-          setBossState("dead");
-          setTimeout(() => {
-            loadNextBoss();
-          }, 5000);
-        } else {
+          // Atualizar UI primeiro para resposta imediata
+          setBossState("hitting");
+          setIsAnimating(true);
+          setDamageText(`-${damage.toFixed(4)}`);
+
+          // Adicionar trade ao monitor imediatamente
+          const newTrade = {
+            id: Date.now(),
+            type: "buy",
+            solAmount: solValue,
+            damage,
+            timestamp: new Date().toISOString(),
+            bossName: prevBoss.name,
+          };
+          setRecentTrades((prev: any[]) => {
+            return [newTrade, ...prev.slice(0, 9)];
+          });
+
+          // Chamadas ao servidor em paralelo (sem bloquear UI)
+          Promise.all([
+            saveTradeToDatabase({
+              bossId: prevBoss.id,
+              signature: data.signature,
+              mint: data.mint,
+              solAmount: solValue,
+              tokenAmount: data.tokenAmount,
+              txType: data.txType,
+              damageDealt: damage,
+              healApplied: 0,
+              timestamp: new Date().toISOString(),
+            }),
+            updateBossInDatabase(
+              prevBoss.id,
+              newHealth,
+              isDefeated,
+              data.signature,
+              txType
+            ),
+            updateGameSession(damage, 0),
+          ]).catch((error) => {
+            console.error("Error syncing trade to server:", error);
+          });
+
+          if (isDefeated) {
+            setBossDefeated(true);
+            bossDefeatedRef.current = true;
+            setBossState("dead");
+            setTimeout(() => {
+              loadNextBoss();
+            }, 5000);
+          } else {
+            setTimeout(() => {
+              setIsAnimating(false);
+              setBossState("idle");
+              setDamageText("");
+            }, 1500);
+          }
+
+          return updatedBoss;
+        });
+        
+        return; // Retornar aqui pois toda a lógica está dentro do setState
+      } else if (txType === "sell") {
+        // Usar atualização funcional para garantir que sempre usamos o valor mais recente
+        setCurrentBoss((prevBoss) => {
+          if (!prevBoss) return prevBoss;
+          
+          const heal = solValue * 200 * prevBoss.sellWeight;
+          
+          const newHealth = Math.min(
+            prevBoss.maxHealth,
+            prevBoss.currentHealth + heal
+          );
+
+          const updatedBoss = { ...prevBoss, currentHealth: newHealth };
+          
+          // Atualizar ref imediatamente
+          currentBossRef.current = updatedBoss;
+
+          // Atualizar UI primeiro para resposta imediata
+          setBossState("healing");
+          setIsAnimating(true);
+          setHealText(`+${heal.toFixed(4)}`);
+
+          // Adicionar trade ao monitor imediatamente
+          const newTrade = {
+            id: Date.now(),
+            type: "sell",
+            solAmount: solValue,
+            heal,
+            timestamp: new Date().toISOString(),
+            bossName: prevBoss.name,
+          };
+          setRecentTrades((prev: any[]) => {
+            return [newTrade, ...prev.slice(0, 9)];
+          });
+
+          // Chamadas ao servidor em paralelo (sem bloquear UI)
+          Promise.all([
+            saveTradeToDatabase({
+              bossId: prevBoss.id,
+              signature: data.signature,
+              mint: data.mint,
+              solAmount: solValue,
+              tokenAmount: data.tokenAmount,
+              txType: data.txType,
+              damageDealt: 0,
+              healApplied: heal,
+              timestamp: new Date().toISOString(),
+            }),
+            updateBossInDatabase(
+              prevBoss.id,
+              newHealth,
+              false,
+              data.signature,
+              txType
+            ),
+            updateGameSession(0, heal),
+          ]).catch((error) => {
+            console.error("Error syncing trade to server:", error);
+          });
+
           setTimeout(() => {
             setIsAnimating(false);
             setBossState("idle");
-            setDamageText("");
+            setHealText("");
           }, 1500);
-        }
-      } else if (txType === "sell") {
-        const heal = solValue * 200 * currentBoss.sellWeight;
-        const newHealth = Math.min(
-          currentBoss.maxHealth,
-          currentBoss.currentHealth + heal
-        );
 
-        // Atualizar UI primeiro para resposta imediata
-        setBossState("healing");
-        setIsAnimating(true);
-
-        const updatedBoss = { ...currentBoss, currentHealth: newHealth };
-
-        setCurrentBoss(updatedBoss);
-        setHealText(`+${heal.toFixed(4)}`);
-
-        // Adicionar trade ao monitor imediatamente
-        const newTrade = {
-          id: Date.now(),
-          type: "sell",
-          solAmount: solValue,
-          heal,
-          timestamp: new Date().toISOString(),
-          bossName: currentBoss.name,
-        };
-        console.log("📊 Adicionando trade ao monitor:", newTrade);
-        setRecentTrades((prev: any[]) => {
-          const updated = [newTrade, ...prev.slice(0, 9)];
-          console.log("📊 Trades atualizados, total:", updated.length);
-          return updated;
+          return updatedBoss;
         });
-
-        // Chamadas ao servidor em paralelo (sem bloquear UI)
-        Promise.all([
-          saveTradeToDatabase({
-            bossId: currentBoss.id,
-            signature: data.signature,
-            mint: data.mint,
-            solAmount: solValue,
-            tokenAmount: data.tokenAmount,
-            txType: data.txType,
-            damageDealt: 0,
-            healApplied: heal,
-            timestamp: new Date().toISOString(),
-          }),
-          updateBossInDatabase(
-            currentBoss.id,
-            newHealth,
-            false,
-            data.signature,
-            txType
-          ),
-          updateGameSession(0, heal),
-        ]).catch((error) => {
-          console.error("Error syncing trade to server:", error);
-        });
-
-        setTimeout(() => {
-          setIsAnimating(false);
-          setBossState("idle");
-          setHealText("");
-        }, 1500);
       }
     } catch (error) {
       console.error("Error processing trade:", error);
@@ -461,7 +466,6 @@ export default function Home() {
       clearTimeout(connectionTimeout);
       setWsConnected(true);
       reconnectAttempts = 0;
-      console.log("✅ WebSocket conectado!");
       const mint = process.env.NEXT_PUBLIC_TOKEN_MINT || "";
       if (!mint) {
         console.error("❌ Mint is not set");
@@ -471,7 +475,6 @@ export default function Home() {
         method: "subscribeTokenTrade",
         keys: [mint],
       });
-      console.log("📡 Inscrevendo-se em trades do token:", mint);
       ws.send(subscribeMessage);
     };
 
@@ -479,27 +482,14 @@ export default function Home() {
       try {
         const data = JSON.parse(event.data);
 
-        console.log("📨 WebSocket message recebido:", {
-          hasSignature: !!data.signature,
-          hasMint: !!data.mint,
-          txType: data.txType,
-          solAmount: data.solAmount || data.sol_amount || data.amount,
-        });
-
         if (data.signature && data.mint) {
           if (!isValidTradeData(data)) {
-            console.log("❌ Trade inválido:", data);
             return;
           }
           if (isRateLimited()) {
-            console.log("⏱️ Rate limit atingido");
             return;
           }
           if (processedTrades.has(data.signature)) {
-            console.log(
-              "🔄 Trade já processado:",
-              data.signature.substring(0, 8) + "..."
-            );
             return;
           }
           processedTrades.add(data.signature);
@@ -512,8 +502,6 @@ export default function Home() {
             console.error("Trade processing failed:", error);
             processedTrades.delete(data.signature);
           });
-        } else {
-          console.log("⚠️ Mensagem WebSocket sem signature ou mint:", data);
         }
       } catch (error) {
         console.error("❌ Error parsing WebSocket message:", error);
