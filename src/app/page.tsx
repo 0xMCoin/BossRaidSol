@@ -248,21 +248,20 @@ export default function Home() {
       const txType = data.txType?.toLowerCase();
 
       if (txType === "buy" || txType === "create") {
-        // Usar atualização funcional para garantir que sempre usamos o valor mais recente
         setCurrentBoss((prevBoss) => {
           if (!prevBoss) return prevBoss;
-          
+
           const damage = solValue * 200 * prevBoss.buyWeight;
-          
+
           const newHealth = Math.max(0, prevBoss.currentHealth - damage);
           const isDefeated = newHealth <= 0;
-          
+
           const updatedBoss = {
             ...prevBoss,
             currentHealth: newHealth,
             isDefeated,
           };
-          
+
           // Atualizar ref imediatamente
           currentBossRef.current = updatedBoss;
 
@@ -326,22 +325,22 @@ export default function Home() {
 
           return updatedBoss;
         });
-        
+
         return; // Retornar aqui pois toda a lógica está dentro do setState
       } else if (txType === "sell") {
         // Usar atualização funcional para garantir que sempre usamos o valor mais recente
         setCurrentBoss((prevBoss) => {
           if (!prevBoss) return prevBoss;
-          
+
           const heal = solValue * 200 * prevBoss.sellWeight;
-          
+
           const newHealth = Math.min(
             prevBoss.maxHealth,
             prevBoss.currentHealth + heal
           );
 
           const updatedBoss = { ...prevBoss, currentHealth: newHealth };
-          
+
           // Atualizar ref imediatamente
           currentBossRef.current = updatedBoss;
 
@@ -852,84 +851,6 @@ export default function Home() {
                       </div>
                     </div>
                   )}
-                </div>
-
-                {/* Creative Health Bar UI */}
-                <div className="w-96 max-w-lg mt-10">
-                  {/* Health Bar Frame */}
-                  <div className="relative">
-                    {/* Outer Hexagonal Frame */}
-                    <div className="absolute -inset-2">
-                      <div className="w-full h-full border-2 border-purple-500/30 rounded-lg relative">
-                        <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-purple-500/40 border border-purple-400/60 rotate-45" />
-                        <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-purple-500/40 border border-purple-400/60 rotate-45" />
-                        <div className="absolute -left-1 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-purple-500/40 border border-purple-400/60 rotate-45" />
-                        <div className="absolute -right-1 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-purple-500/40 border border-purple-400/60 rotate-45" />
-                      </div>
-                    </div>
-
-                    {/* Inner Glow */}
-                    <div className="absolute inset-0 bg-purple-500/5 rounded-lg blur-sm" />
-
-                    {/* Health Bar */}
-                    <div className="relative bg-gray-900/80 backdrop-blur-sm rounded-lg p-4 border border-gray-700/50">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-                          <span className="text-red-400 font-bold text-sm tracking-wider">
-                            HP
-                          </span>
-                        </div>
-                        <div className="text-white font-mono text-sm">
-                          {Number(currentBoss.currentHealth).toFixed(2)} /{" "}
-                          {currentBoss.maxHealth}
-                        </div>
-                      </div>
-
-                      <div className="relative">
-                        <div className="w-full bg-gray-800/50 rounded-full h-6 border border-gray-600/50 overflow-hidden shadow-inner">
-                          <div
-                            className={`h-full transition-all duration-1000 ease-out relative rounded-full ${
-                              currentBoss.currentHealth >
-                              currentBoss.maxHealth * 0.6
-                                ? "bg-linear-to-r from-green-500 via-green-400 to-emerald-500"
-                                : currentBoss.currentHealth >
-                                  currentBoss.maxHealth * 0.3
-                                ? "bg-linear-to-r from-yellow-500 via-orange-500 to-red-500"
-                                : "bg-linear-to-r from-red-600 via-red-500 to-red-700"
-                            }`}
-                            style={{
-                              width: `${
-                                (currentBoss.currentHealth /
-                                  currentBoss.maxHealth) *
-                                100
-                              }%`,
-                            }}
-                          >
-                            {/* Energy effect */}
-                            <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/30 to-transparent animate-shine" />
-                            <div className="absolute inset-0 bg-linear-to-r from-transparent to-black/20 rounded-full" />
-                          </div>
-                        </div>
-
-                        {/* Percentage Display */}
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-white font-black text-lg drop-shadow-lg font-mono">
-                            {(
-                              (currentBoss.currentHealth /
-                                currentBoss.maxHealth) *
-                              100
-                            ).toFixed(2)}
-                            %
-                          </span>
-                        </div>
-
-                        {/* Corner accents */}
-                        <div className="absolute -top-1 -left-1 w-2 h-2 bg-purple-400/60 rounded-full animate-pulse" />
-                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-400/60 rounded-full animate-pulse" />
-                      </div>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
