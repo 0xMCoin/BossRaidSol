@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
 
       // Tentar primeiro com getTokenLargestAccounts (mais eficiente, mas limitado a top 20)
       // Se precisar de mais, usar getProgramAccounts
-      let holdersMap = new Map<string, number>();
+      const holdersMap = new Map<string, number>();
       
       try {
         // Buscar informações do mint para obter os decimals (com retry)
