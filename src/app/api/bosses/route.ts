@@ -12,18 +12,18 @@ export async function GET(request: NextRequest) {
     const action = searchParams.get("action");
 
     if (action === "current") {
-      const boss = getCurrentBoss();
+      const boss = await getCurrentBoss();
       return NextResponse.json({ boss });
     }
 
     if (action === "all") {
-      const bosses = getAllBosses();
+      const bosses = await getAllBosses();
       return NextResponse.json({ bosses });
     }
 
     const id = searchParams.get("id");
     if (id) {
-      const boss = getBossById(parseInt(id));
+      const boss = await getBossById(parseInt(id));
       return NextResponse.json({ boss });
     }
 
@@ -39,14 +39,31 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch (error) {
+      return NextResponse.json(
+        { error: "Invalid JSON in request body" },
+        { status: 400 }
+      );
+    }
+    
     const { action, bossId, currentHealth, isDefeated, signature, txType } =
       body;
 
     if (action === "updateHealth" && bossId && currentHealth !== undefined) {
-      const boss = getBossById(bossId);
+      const boss = await getBossById(bossId);
       if (!boss) {
         return NextResponse.json({ error: "Boss not found" }, { status: 404 });
+      }
+
+      // Não permitir curar um boss que já está derrotado
+      if (boss.isDefeated && currentHealth > boss.currentHealth && txType === "sell") {
+        return NextResponse.json(
+          { error: "Boss já está derrotado e não pode ser curado" },
+          { status: 400 }
+        );
       }
 
       const isHealthIncrease = currentHealth > boss.currentHealth;
@@ -73,8 +90,10 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      updateBossHealth(bossId, currentHealth, isDefeated);
-      const bossDefeated = currentHealth <= 0 || isDefeated;
+      // Garantir que se a vida chegou a 0, o boss seja marcado como derrotado
+      const shouldBeDefeated = currentHealth <= 0 || isDefeated;
+      await updateBossHealth(bossId, currentHealth, shouldBeDefeated);
+      const bossDefeated = shouldBeDefeated;
 
       return NextResponse.json({ success: true, bossDefeated });
     }

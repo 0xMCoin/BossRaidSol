@@ -1,7 +1,11 @@
 #!/usr/bin/env tsx
-// Script para registrar bosses no database
-// Status: ✅ EXECUTADO - Todos os bosses foram registrados com imagens corretas
+// Script para registrar bosses no Supabase
 // Para re-executar: npx tsx register-bosses.ts
+// Requer: .env.local com NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY
+
+import { config } from "dotenv";
+config({ path: ".env.local" });
+config(); // .env como fallback
 
 import { registerBossFromData } from "./src/lib/db/database";
 
@@ -148,7 +152,7 @@ async function registerBosses() {
 
   for (const bossData of bossesData) {
     try {
-      const boss = registerBossFromData(bossData);
+      const boss = await registerBossFromData(bossData);
       console.log(`✅ Registered boss: ${boss.name} (${boss.bossId}) - HP: ${boss.currentHealth}/${boss.maxHealth}`);
     } catch (error) {
       console.error(`❌ Failed to register boss ${bossData.name}:`, error);

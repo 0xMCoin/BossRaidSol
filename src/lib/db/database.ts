@@ -1,7 +1,6 @@
-import fs from "fs";
-import path from "path";
+import { supabase } from "@/lib/supabase/server";
 
-// Define interfaces for data storage
+// Define interfaces for data storage (camelCase para compatibilidade com o resto da app)
 export interface Boss {
   id: number;
   bossId: string;
@@ -22,7 +21,6 @@ export interface Boss {
   updatedAt: string;
 }
 
-// Simplified boss data format for registration
 export interface BossRegistrationData {
   id: string;
   name: string;
@@ -80,114 +78,159 @@ export interface GameSession {
   lastActivity: string;
 }
 
-interface GameData {
-  bosses: Boss[];
-  trades: PumpPortalTrade[];
-  gameSession: GameSession;
-}
-
-// File-based storage paths
-const DATA_DIR = path.join(process.cwd(), "data");
-const DATA_FILE = path.join(DATA_DIR, "game-data.json");
-
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
-}
-// Load data from file
-function loadData(): GameData {
-  try {
-    if (fs.existsSync(DATA_FILE)) {
-      const data = fs.readFileSync(DATA_FILE, "utf-8");
-      const parsed = JSON.parse(data);
-      return parsed;
-    } else {
-    }
-  } catch (error) {
-    console.error("❌ DB: Error loading game data:", error);
-  }
-
+// Mapear linha do Supabase (snake_case) para Boss (camelCase)
+function mapRowToBoss(row: Record<string, unknown>): Boss {
   return {
-    bosses: [],
-    trades: [],
-    gameSession: {
-      id: 1,
-      currentBossId: 1,
-      totalDamageDealt: 0,
-      totalHealApplied: 0,
-      sessionStart: new Date().toISOString(),
-      lastActivity: new Date().toISOString(),
-    },
+    id: Number(row.id),
+    bossId: String(row.boss_id),
+    name: String(row.name),
+    status: row.status as "ATIVO" | "INATIVO" | undefined,
+    maxHealth: Number(row.max_health),
+    currentHealth: Number(row.current_health),
+    damagePerBuy: Number(row.damage_per_buy),
+    healPerSell: Number(row.heal_per_sell),
+    buyWeight: Number(row.buy_weight),
+    sellWeight: Number(row.sell_weight),
+    damageMultiplier: row.damage_multiplier != null ? Number(row.damage_multiplier) : undefined,
+    healMultiplier: row.heal_multiplier != null ? Number(row.heal_multiplier) : undefined,
+    sprites: (() => {
+      const s = row.sprites as { idle?: string; hitting?: string; healing?: string; dead?: string } | null | undefined;
+      return {
+        idle: s?.idle ?? "",
+        hitting: s?.hitting ?? "",
+        healing: s?.healing ?? "",
+        dead: s?.dead ?? "",
+      };
+    })(),
+    isDefeated: Boolean(row.is_defeated),
+    defeatedAt: row.defeated_at != null ? String(row.defeated_at) : undefined,
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
   };
 }
 
-// Save data to file
-function saveData(data: GameData): void {
-  try {
-    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), "utf-8");
-  } catch (error) {
-    console.error("Error saving game data:", error);
+function mapRowToTrade(row: Record<string, unknown>): PumpPortalTrade {
+  return {
+    id: Number(row.id),
+    bossId: Number(row.boss_id),
+    signature: String(row.signature),
+    mint: String(row.mint),
+    solAmount: Number(row.sol_amount),
+    tokenAmount: Number(row.token_amount),
+    txType: row.tx_type as "buy" | "sell",
+    damageDealt: row.damage_dealt != null ? Number(row.damage_dealt) : undefined,
+    healApplied: row.heal_applied != null ? Number(row.heal_applied) : undefined,
+    timestamp: String(row.timestamp),
+    createdAt: String(row.created_at),
+  };
+}
+
+function mapRowToGameSession(row: Record<string, unknown>): GameSession {
+  const firstBossId = row.current_boss_id != null ? Number(row.current_boss_id) : 1;
+  return {
+    id: Number(row.id),
+    currentBossId: firstBossId,
+    totalDamageDealt: Number(row.total_damage_dealt ?? 0),
+    totalHealApplied: Number(row.total_heal_applied ?? 0),
+    sessionStart: String(row.session_start),
+    lastActivity: String(row.last_activity),
+  };
+}
+
+// --- Boss operations ---
+
+export async function getAllBosses(): Promise<Boss[]> {
+  const { data, error } = await supabase
+    .from("bosses")
+    .select("*")
+    .order("id", { ascending: true });
+
+  if (error) {
+    console.error("getAllBosses error:", error);
+    return [];
   }
+  return (data || []).map(mapRowToBoss);
 }
 
-// Boss operations
-export function getAllBosses(): Boss[] {
-  const data = loadData();
-  return data.bosses;
+export async function getBossById(id: number): Promise<Boss | null> {
+  const { data, error } = await supabase
+    .from("bosses")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error || !data) return null;
+  return mapRowToBoss(data);
 }
 
-export function getBossById(id: number): Boss | null {
-  const data = loadData();
-  return data.bosses.find((boss) => boss.id === id) || null;
+export async function getBossByBossId(bossId: string): Promise<Boss | null> {
+  const { data, error } = await supabase
+    .from("bosses")
+    .select("*")
+    .eq("boss_id", bossId)
+    .single();
+
+  if (error || !data) return null;
+  return mapRowToBoss(data);
 }
 
-export function getBossByBossId(bossId: string): Boss | null {
-  const data = loadData();
-  return data.bosses.find((boss) => boss.bossId === bossId) || null;
-}
-
-export function addOrUpdateBoss(
+export async function addOrUpdateBoss(
   bossData: Omit<Boss, "id" | "createdAt" | "updatedAt">
-): Boss {
-  const data = loadData();
+): Promise<Boss> {
   const now = new Date().toISOString();
 
-  // Find existing boss by bossId
-  const existingIndex = data.bosses.findIndex(
-    (boss) => boss.bossId === bossData.bossId
-  );
+  const { data: existing } = await supabase
+    .from("bosses")
+    .select("id")
+    .eq("boss_id", bossData.bossId)
+    .single();
 
-  if (existingIndex !== -1) {
-    // Update existing boss
-    const existingBoss = data.bosses[existingIndex];
-    data.bosses[existingIndex] = {
-      ...existingBoss,
-      ...bossData,
-      updatedAt: now,
-    };
-    saveData(data);
-    return data.bosses[existingIndex];
-  } else {
-    // Add new boss
-    const newId = Math.max(...data.bosses.map((b) => b.id), 0) + 1;
-    const newBoss: Boss = {
-      ...bossData,
-      id: newId,
-      createdAt: now,
-      updatedAt: now,
-    };
-    data.bosses.push(newBoss);
-    saveData(data);
-    return newBoss;
+  const row = {
+    boss_id: bossData.bossId,
+    name: bossData.name,
+    status: bossData.status ?? "ATIVO",
+    max_health: bossData.maxHealth,
+    current_health: bossData.currentHealth,
+    damage_per_buy: bossData.damagePerBuy,
+    heal_per_sell: bossData.healPerSell,
+    buy_weight: bossData.buyWeight,
+    sell_weight: bossData.sellWeight,
+    damage_multiplier: bossData.damageMultiplier ?? null,
+    heal_multiplier: bossData.healMultiplier ?? null,
+    sprites: bossData.sprites,
+    is_defeated: bossData.isDefeated ?? false,
+    defeated_at: bossData.defeatedAt ?? null,
+    updated_at: now,
+  };
+
+  if (existing) {
+    const { data, error } = await supabase
+      .from("bosses")
+      .update(row)
+      .eq("id", existing.id)
+      .select()
+      .single();
+
+    if (error) throw new Error(`addOrUpdateBoss update: ${error.message}`);
+    return mapRowToBoss(data!);
   }
+
+  const { data, error } = await supabase
+    .from("bosses")
+    .insert({ ...row, created_at: now })
+    .select()
+    .single();
+
+  if (error) throw new Error(`addOrUpdateBoss insert: ${error.message}`);
+  return mapRowToBoss(data!);
 }
 
-export function registerBossFromData(bossRegData: BossRegistrationData): Boss {
+export function registerBossFromData(bossRegData: BossRegistrationData): Promise<Boss> {
   const bossData: Omit<Boss, "id" | "createdAt" | "updatedAt"> = {
     bossId: bossRegData.id,
     name: bossRegData.name,
     maxHealth: bossRegData.hpMax,
-    currentHealth: bossRegData.hpMax, // Start with full health
+    currentHealth: bossRegData.hpMax,
     damagePerBuy: bossRegData.buyDmg,
     healPerSell: bossRegData.sellHeal,
     buyWeight: bossRegData.buyWeight,
@@ -195,164 +238,230 @@ export function registerBossFromData(bossRegData: BossRegistrationData): Boss {
     sprites: bossRegData.sprites,
     isDefeated: false,
   };
-
   return addOrUpdateBoss(bossData);
 }
 
-export function updateBossHealth(
+export async function updateBossHealth(
   id: number,
   currentHealth: number,
   isDefeated: boolean = false
-) {
-  const data = loadData();
-  const bossIndex = data.bosses.findIndex((boss) => boss.id === id);
+): Promise<void> {
+  const boss = await getBossById(id);
+  if (!boss) throw new Error(`Boss with id ${id} not found`);
 
-  if (bossIndex === -1) {
-    throw new Error(`Boss with id ${id} not found`);
+  // Se o boss já está derrotado, não permitir curar (a menos que seja um reset explícito)
+  if (boss.isDefeated && currentHealth > boss.currentHealth && !isDefeated) {
+    throw new Error(`Boss ${boss.name} já está derrotado e não pode ser curado`);
   }
 
-  const boss = data.bosses[bossIndex];
-  const oldHealth = boss.currentHealth;
-
-  // Security: Validate health change logic
   if (currentHealth < 0 || currentHealth > boss.maxHealth) {
     throw new Error(
       `Invalid health value: ${currentHealth}. Must be between 0 and ${boss.maxHealth}`
     );
   }
 
-  // Security: Only allow health reduction (damage) or healing to valid amounts
-  if (currentHealth > oldHealth && currentHealth > boss.maxHealth) {
-    throw new Error(
-      `Invalid health increase: ${currentHealth} > ${boss.maxHealth}`
-    );
-  }
+  // Se a vida chegou a 0 ou menos, marcar como derrotado
+  const shouldBeDefeated = currentHealth <= 0 || isDefeated;
 
-  // Audit: Log health changes (only in production logs, not console)
-  // This helps track all boss health modifications
-  const auditLog = {
-    timestamp: new Date().toISOString(),
-    bossId: id,
-    bossName: boss.name,
-    oldHealth,
-    newHealth: currentHealth,
-    isDefeated,
-    change: currentHealth - oldHealth,
+  const updates: Record<string, unknown> = {
+    current_health: Math.max(0, currentHealth), // Garantir que nunca seja negativo
+    is_defeated: shouldBeDefeated,
+    updated_at: new Date().toISOString(),
   };
-
-  // In production, you might want to save this to a separate audit log file
-  console.log(`AUDIT: Boss health change:`, JSON.stringify(auditLog));
-
-  // Update boss health
-  data.bosses[bossIndex].currentHealth = currentHealth;
-  data.bosses[bossIndex].isDefeated = isDefeated;
-
-  // If boss is defeated, mark defeated time
-  if (isDefeated && !data.bosses[bossIndex].defeatedAt) {
-    data.bosses[bossIndex].defeatedAt = new Date().toISOString();
+  if (shouldBeDefeated && !boss.isDefeated) {
+    updates.defeated_at = new Date().toISOString();
   }
 
-  saveData(data);
+  const { error } = await supabase.from("bosses").update(updates).eq("id", id);
+  if (error) throw new Error(`updateBossHealth: ${error.message}`);
 }
 
-export function getCurrentBoss(): Boss | null {
-  const data = loadData();
-  const currentBoss = data.bosses.find((boss) => !boss.isDefeated) || null;
-  return currentBoss;
+export async function getCurrentBoss(): Promise<Boss | null> {
+  const { data, error } = await supabase
+    .from("bosses")
+    .select("*")
+    .eq("is_defeated", false)
+    .order("id", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return mapRowToBoss(data);
 }
 
-// Trade operations
-export function saveTrade(trade: Omit<PumpPortalTrade, "id" | "createdAt">) {
-  const data = loadData();
+// --- Trade operations ---
 
-  // Check if trade already exists (prevent duplicates)
-  const existingTrade = data.trades.find(
-    (t) => t.signature === trade.signature
-  );
-  if (existingTrade) {
-    return; // Skip duplicate
-  }
+export async function saveTrade(trade: Omit<PumpPortalTrade, "id" | "createdAt">): Promise<void> {
+  const { data: existing } = await supabase
+    .from("trades")
+    .select("id")
+    .eq("signature", trade.signature)
+    .maybeSingle();
 
-  const newTrade: PumpPortalTrade = {
-    ...trade,
-    id: Date.now(), // Simple ID generation
-    createdAt: new Date().toISOString(),
-  };
+  if (existing) return;
 
-  data.trades.push(newTrade);
+  const { error } = await supabase.from("trades").insert({
+    boss_id: trade.bossId,
+    signature: trade.signature,
+    mint: trade.mint,
+    sol_amount: trade.solAmount,
+    token_amount: trade.tokenAmount,
+    tx_type: trade.txType,
+    damage_dealt: trade.damageDealt ?? null,
+    heal_applied: trade.healApplied ?? null,
+    timestamp: trade.timestamp,
+  });
 
-  // Keep only last 1000 trades to prevent file from growing too large
-  if (data.trades.length > 1000) {
-    data.trades = data.trades.slice(-1000);
-  }
-
-  saveData(data);
+  if (error) throw new Error(`saveTrade: ${error.message}`);
 }
 
-export function getTradesForBoss(
+export async function getTradesForBoss(
   bossId: number,
   limit: number = 50
-): PumpPortalTrade[] {
-  const data = loadData();
-  return data.trades
-    .filter((trade) => trade.bossId === bossId)
-    .sort(
-      (a, b) =>
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    )
-    .slice(0, limit);
+): Promise<PumpPortalTrade[]> {
+  const { data, error } = await supabase
+    .from("trades")
+    .select("*")
+    .eq("boss_id", bossId)
+    .order("timestamp", { ascending: false })
+    .limit(limit);
+
+  if (error) return [];
+  return (data || []).map(mapRowToTrade);
 }
 
-// Game session operations
-export function getOrCreateGameSession(): GameSession {
-  const data = loadData();
-  return data.gameSession;
+// --- Game session operations ---
+
+export async function getOrCreateGameSession(): Promise<GameSession> {
+  const { data: existing } = await supabase
+    .from("game_session")
+    .select("*")
+    .limit(1)
+    .maybeSingle();
+
+  if (existing) return mapRowToGameSession(existing);
+
+  // Buscar o primeiro boss para current_boss_id
+  const { data: firstBoss } = await supabase
+    .from("bosses")
+    .select("id")
+    .order("id", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  const now = new Date().toISOString();
+  const { data: inserted, error } = await supabase
+    .from("game_session")
+    .insert({
+      current_boss_id: firstBoss?.id ?? null,
+      total_damage_dealt: 0,
+      total_heal_applied: 0,
+      session_start: now,
+      last_activity: now,
+    })
+    .select()
+    .single();
+
+  if (error) throw new Error(`getOrCreateGameSession: ${error.message}`);
+  return mapRowToGameSession(inserted!);
 }
 
-export function updateGameSession(
+export async function updateGameSession(
   sessionId: number,
   damageDealt: number = 0,
   healApplied: number = 0,
   newBossId?: number
-) {
-  const data = loadData();
+): Promise<void> {
+  const { data: session } = await supabase
+    .from("game_session")
+    .select("*")
+    .eq("id", sessionId)
+    .single();
 
-  if (data.gameSession.id === sessionId) {
-    data.gameSession.totalDamageDealt += damageDealt;
-    data.gameSession.totalHealApplied += healApplied;
-    if (newBossId) {
-      data.gameSession.currentBossId = newBossId;
-    }
-    data.gameSession.lastActivity = new Date().toISOString();
-    saveData(data);
-  }
+  if (!session) return;
+
+  const updates: Record<string, unknown> = {
+    total_damage_dealt: Number(session.total_damage_dealt ?? 0) + damageDealt,
+    total_heal_applied: Number(session.total_heal_applied ?? 0) + healApplied,
+    last_activity: new Date().toISOString(),
+  };
+  if (newBossId != null) updates.current_boss_id = newBossId;
+
+  await supabase.from("game_session").update(updates).eq("id", sessionId);
 }
 
-// Statistics
-export function getGameStats() {
-  const data = loadData();
+export async function getGameStats(): Promise<{
+  totalBuyTrades: number;
+  totalSellTrades: number;
+  totalSolFromBuys: number;
+  totalSolFromSells: number;
+  totalDamageDealt: number;
+  totalHealApplied: number;
+  bossesDefeated: number;
+}> {
+  const [tradesRes, bossesRes] = await Promise.all([
+    supabase.from("trades").select("tx_type, sol_amount, damage_dealt, heal_applied"),
+    supabase.from("bosses").select("is_defeated"),
+  ]);
 
-  const buyTrades = data.trades.filter((t) => t.txType === "buy");
-  const sellTrades = data.trades.filter((t) => t.txType === "sell");
+  const trades = tradesRes.data || [];
+  const bosses = bossesRes.data || [];
+
+  const buyTrades = trades.filter((t) => t.tx_type === "buy");
+  const sellTrades = trades.filter((t) => t.tx_type === "sell");
 
   return {
     totalBuyTrades: buyTrades.length,
     totalSellTrades: sellTrades.length,
-    totalSolFromBuys: buyTrades.reduce((sum, t) => sum + t.solAmount, 0),
-    totalSolFromSells: sellTrades.reduce((sum, t) => sum + t.solAmount, 0),
-    totalDamageDealt: data.trades.reduce(
-      (sum, t) => sum + (t.damageDealt || 0),
-      0
-    ),
-    totalHealApplied: data.trades.reduce(
-      (sum, t) => sum + (t.healApplied || 0),
-      0
-    ),
-    bossesDefeated: data.bosses.filter((b) => b.isDefeated).length,
+    totalSolFromBuys: buyTrades.reduce((s, t) => s + Number(t.sol_amount ?? 0), 0),
+    totalSolFromSells: sellTrades.reduce((s, t) => s + Number(t.sol_amount ?? 0), 0),
+    totalDamageDealt: trades.reduce((s, t) => s + Number(t.damage_dealt ?? 0), 0),
+    totalHealApplied: trades.reduce((s, t) => s + Number(t.heal_applied ?? 0), 0),
+    bossesDefeated: bosses.filter((b) => b.is_defeated).length,
   };
 }
 
-export function resetGame() {
-  const data = loadData();
-  saveData(data);
+export async function resetGame(): Promise<void> {
+  const now = new Date().toISOString();
+
+  // Resetar current_health = max_health, is_defeated = false em todos os bosses
+  const { data: bosses } = await supabase.from("bosses").select("id, max_health");
+  if (bosses?.length) {
+    for (const b of bosses) {
+      await supabase
+        .from("bosses")
+        .update({
+          current_health: b.max_health,
+          is_defeated: false,
+          defeated_at: null,
+          updated_at: now,
+        })
+        .eq("id", b.id);
+    }
+  }
+
+  // Resetar game_session
+  const { data: session } = await supabase
+    .from("game_session")
+    .select("id")
+    .limit(1)
+    .maybeSingle();
+
+  if (session) {
+    const { data: first } = await supabase
+      .from("bosses")
+      .select("id")
+      .order("id", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    await supabase
+      .from("game_session")
+      .update({
+        current_boss_id: first?.id ?? null,
+        total_damage_dealt: 0,
+        total_heal_applied: 0,
+        last_activity: now,
+      })
+      .eq("id", session.id);
+  }
 }

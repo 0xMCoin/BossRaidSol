@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'bossId is required' }, { status: 400 });
     }
 
-    const trades = getTradesForBoss(parseInt(bossId), limit);
+    const trades = await getTradesForBoss(parseInt(bossId), limit);
     return NextResponse.json({ trades });
   } catch (error) {
     console.error('Error in trades API:', error);
@@ -21,7 +21,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch (error) {
+      return NextResponse.json(
+        { error: "Invalid JSON in request body" },
+        { status: 400 }
+      );
+    }
+    
     const { bossId, signature, mint, solAmount, tokenAmount, txType, damageDealt, healApplied, timestamp } = body;
 
     if (!bossId || !signature || !mint || solAmount === undefined || !tokenAmount || !txType || !timestamp) {
@@ -40,7 +49,7 @@ export async function POST(request: NextRequest) {
       timestamp
     };
 
-    saveTrade(trade);
+    await saveTrade(trade);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error saving trade:', error);

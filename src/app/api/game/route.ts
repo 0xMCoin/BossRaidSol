@@ -7,12 +7,12 @@ export async function GET(request: NextRequest) {
     const action = searchParams.get('action');
 
     if (action === 'session') {
-      const session = getOrCreateGameSession();
+      const session = await getOrCreateGameSession();
       return NextResponse.json({ session });
     }
 
     if (action === 'stats') {
-      const stats = getGameStats();
+      const stats = await getGameStats();
       return NextResponse.json({ stats });
     }
 
@@ -25,16 +25,25 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch (error) {
+      return NextResponse.json(
+        { error: "Invalid JSON in request body" },
+        { status: 400 }
+      );
+    }
+    
     const { action, sessionId, damageDealt, healApplied, newBossId } = body;
 
     if (action === 'updateSession' && sessionId) {
-      updateGameSession(sessionId, damageDealt || 0, healApplied || 0, newBossId);
+      await updateGameSession(sessionId, damageDealt || 0, healApplied || 0, newBossId);
       return NextResponse.json({ success: true });
     }
 
     if (action === 'reset') {
-      resetGame();
+      await resetGame();
       return NextResponse.json({ success: true });
     }
 
