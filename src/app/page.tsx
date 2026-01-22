@@ -95,6 +95,10 @@ export default function Home() {
   const [bossDefeated, setBossDefeated] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
 
+  // Token info constants
+  const tokenMint = process.env.NEXT_PUBLIC_TOKEN_MINT || "";
+  const twitterUrl = "https://x.com/ChillRaidFun"
+
   // Refs para acessar valores atuais sem causar re-renders
   const currentBossRef = useRef<DatabaseBoss | null>(null);
   const bossDefeatedRef = useRef(false);
@@ -250,18 +254,18 @@ export default function Home() {
       if (txType === "buy" || txType === "create") {
         setCurrentBoss((prevBoss) => {
           if (!prevBoss) return prevBoss;
-          
+
           const damage = solValue * 200 * prevBoss.buyWeight;
-          
+
           const newHealth = Math.max(0, prevBoss.currentHealth - damage);
           const isDefeated = newHealth <= 0;
-          
+
           const updatedBoss = {
             ...prevBoss,
             currentHealth: newHealth,
             isDefeated,
           };
-          
+
           // Atualizar ref imediatamente
           currentBossRef.current = updatedBoss;
 
@@ -325,32 +329,32 @@ export default function Home() {
 
           return updatedBoss;
         });
-        
+
         return; // Retornar aqui pois toda a lógica está dentro do setState
       } else if (txType === "sell") {
         // Não permitir curar um boss que já está derrotado
         if (currentBoss.isDefeated || currentBoss.currentHealth <= 0) {
           return;
         }
-        
+
         // Usar atualização funcional para garantir que sempre usamos o valor mais recente
         setCurrentBoss((prevBoss) => {
           if (!prevBoss) return prevBoss;
-          
+
           // Verificar novamente dentro do setState para evitar race conditions
           if (prevBoss.isDefeated || prevBoss.currentHealth <= 0) {
             return prevBoss;
           }
-          
+
           const heal = solValue * 200 * prevBoss.sellWeight;
-          
+
           const newHealth = Math.min(
             prevBoss.maxHealth,
             prevBoss.currentHealth + heal
           );
 
           const updatedBoss = { ...prevBoss, currentHealth: newHealth };
-          
+
           // Atualizar ref imediatamente
           currentBossRef.current = updatedBoss;
 
@@ -434,11 +438,11 @@ export default function Home() {
       setHoldersLoading(true);
       setHoldersError(null);
       const response = await fetch("/api/holders?limit=50");
-      
+
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
 
       if (data.error) {
@@ -686,6 +690,71 @@ export default function Home() {
         <p className="text-purple-300/80 text-sm font-medium tracking-widest uppercase">
           Real-time trading battle on Solana
         </p>
+
+        {/* Token CA and Twitter - Prominent Display */}
+        <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
+          {/* Contract Address */}
+          <div className="group relative bg-linear-to-r from-purple-900/40 via-purple-800/30 to-blue-900/40 backdrop-blur-sm border border-purple-500/30 rounded-xl px-6 py-3 hover:border-purple-400/50 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/20">
+            <div className="flex items-center gap-3">
+              <div className="text-purple-400 text-lg">🔗</div>
+              <div className="flex flex-col">
+                <span className="text-xs text-purple-300/70 uppercase tracking-wider mb-1">Contract Address</span>
+                <div className="flex items-center gap-2">
+                  <code className="text-sm font-mono text-white font-semibold">
+                    {tokenMint
+                      ? `${tokenMint.slice(0, 4)}...${tokenMint.slice(-4)}`
+                      : "Not configured"}
+                  </code>
+                  {tokenMint && (
+                    <button
+                      onClick={(e) => {
+                        navigator.clipboard.writeText(tokenMint);
+                        // Visual feedback
+                        const btn = e.currentTarget;
+                        const originalText = btn.innerHTML;
+                        btn.innerHTML = "✓";
+                        btn.classList.add("text-green-400");
+                        setTimeout(() => {
+                          btn.innerHTML = originalText;
+                          btn.classList.remove("text-green-400");
+                        }, 2000);
+                      }}
+                      className="text-purple-300 hover:text-purple-200 transition-colors text-sm"
+                      title="Copy full address"
+                    >
+                      📋
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+            {/* Full address tooltip on hover */}
+            {tokenMint && (
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900/95 border border-purple-500/50 rounded-lg text-xs font-mono text-white opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50 shadow-xl">
+                {tokenMint}
+                <div className="absolute top-full left-1/2 transform -translate-x-1/2 -mt-px">
+                  <div className="border-4 border-transparent border-t-gray-900/95"></div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Twitter Link */}
+          {twitterUrl && (
+            <a
+              href={twitterUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group relative bg-linear-to-r from-blue-900/40 via-blue-800/30 to-cyan-900/40 backdrop-blur-sm border border-blue-500/30 rounded-xl px-6 py-3 hover:border-blue-400/50 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/20 flex items-center gap-3"
+            >
+              <div className="flex flex-col">
+                <span className="text-xs text-blue-300/70 uppercase tracking-wider mb-1">Follow Us</span>
+                <span className="text-sm font-semibold text-white">Twitter</span>
+              </div>
+              <div className="text-blue-400 group-hover:translate-x-1 transition-transform">→</div>
+            </a>
+          )}
+        </div>
       </div>
 
       <div className="relative z-10 boss-raid-layout flex flex-col xl:flex-row items-center justify-between px-4 gap-6 max-w-7xl mx-auto">
@@ -746,15 +815,14 @@ export default function Home() {
                   >
                     <div className="flex items-center gap-2">
                       <div
-                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                          holder.rank === 1
+                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${holder.rank === 1
                             ? "bg-yellow-500/20 text-yellow-300 border border-yellow-500/30"
                             : holder.rank === 2
-                            ? "bg-gray-400/20 text-gray-300 border border-gray-400/30"
-                            : holder.rank === 3
-                            ? "bg-orange-500/20 text-orange-300 border border-orange-500/30"
-                            : "bg-purple-500/20 text-purple-300 border border-purple-500/30"
-                        }`}
+                              ? "bg-gray-400/20 text-gray-300 border border-gray-400/30"
+                              : holder.rank === 3
+                                ? "bg-orange-500/20 text-orange-300 border border-orange-500/30"
+                                : "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                          }`}
                       >
                         {holder.rank <= 3 ? "🏆" : holder.rank}
                       </div>
@@ -834,15 +902,14 @@ export default function Home() {
                   {/* Main Boss Image */}
                   <div className="relative z-10 overflow-hidden rounded-lg">
                     <div
-                      className={`relative rounded-lg transition-all duration-500 ease-in-out transform ${
-                        bossState === "dead"
+                      className={`relative rounded-lg transition-all duration-500 ease-in-out transform ${bossState === "dead"
                           ? "grayscale opacity-50 scale-90 filter brightness-50"
                           : bossState === "hitting"
-                          ? "scale-110 brightness-110"
-                          : bossState === "healing"
-                          ? "scale-105 brightness-110"
-                          : "scale-100 brightness-100"
-                      } ${isAnimating ? "animate-pulse" : ""}`}
+                            ? "scale-110 brightness-110"
+                            : bossState === "healing"
+                              ? "scale-105 brightness-110"
+                              : "scale-100 brightness-100"
+                        } ${isAnimating ? "animate-pulse" : ""}`}
                     >
                       <Image
                         src={currentBoss.sprites[bossState]}
@@ -924,21 +991,19 @@ export default function Home() {
                       <div className="relative">
                         <div className="w-full bg-gray-800/50 rounded-full h-6 border border-gray-600/50 overflow-hidden shadow-inner">
                           <div
-                            className={`h-full transition-all duration-1000 ease-out relative rounded-full ${
-                              currentBoss.currentHealth >
-                              currentBoss.maxHealth * 0.6
+                            className={`h-full transition-all duration-1000 ease-out relative rounded-full ${currentBoss.currentHealth >
+                                currentBoss.maxHealth * 0.6
                                 ? "bg-linear-to-r from-green-500 via-green-400 to-emerald-500"
                                 : currentBoss.currentHealth >
                                   currentBoss.maxHealth * 0.3
-                                ? "bg-linear-to-r from-yellow-500 via-orange-500 to-red-500"
-                                : "bg-linear-to-r from-red-600 via-red-500 to-red-700"
-                            }`}
+                                  ? "bg-linear-to-r from-yellow-500 via-orange-500 to-red-500"
+                                  : "bg-linear-to-r from-red-600 via-red-500 to-red-700"
+                              }`}
                             style={{
-                              width: `${
-                                (currentBoss.currentHealth /
+                              width: `${(currentBoss.currentHealth /
                                   currentBoss.maxHealth) *
                                 100
-                              }%`,
+                                }%`,
                             }}
                           >
                             {/* Energy effect */}
@@ -1027,11 +1092,10 @@ export default function Home() {
                   >
                     <div className="flex items-center gap-2">
                       <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                          trade.type === "buy"
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${trade.type === "buy"
                             ? "bg-red-500/20 text-red-300 border border-red-500/30"
                             : "bg-green-500/20 text-green-300 border border-green-500/30"
-                        }`}
+                          }`}
                       >
                         {trade.type === "buy" ? "🗡️" : "💚"}
                       </div>
@@ -1046,11 +1110,10 @@ export default function Home() {
                     </div>
                     <div className="text-right">
                       <div
-                        className={`text-sm font-bold ${
-                          trade.type === "buy"
+                        className={`text-sm font-bold ${trade.type === "buy"
                             ? "text-red-400"
                             : "text-green-400"
-                        }`}
+                          }`}
                       >
                         {trade.type === "buy"
                           ? `-${Math.round(trade.damage)} HP`
