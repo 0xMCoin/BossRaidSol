@@ -80,6 +80,17 @@ const BASE_RECONNECT_DELAY = 1000;
 
 type BossState = "idle" | "hitting" | "healing" | "dead";
 
+// Formatar número de dano
+function formatDamage(amount: number): string {
+  if (amount >= 1000000) {
+    return `${(amount / 1000000).toFixed(2)}M`;
+  }
+  if (amount >= 1000) {
+    return `${(amount / 1000).toFixed(2)}K`;
+  }
+  return amount.toFixed(2);
+}
+
 export default function Home() {
   const [bossState, setBossState] = useState<BossState>("idle");
   const [currentBoss, setCurrentBoss] = useState<DatabaseBoss | null>(null);
@@ -89,9 +100,9 @@ export default function Home() {
   const [recentTrades, setRecentTrades] = useState<any[]>([]);
   const [wsConnected, setWsConnected] = useState(false);
   const [gameSession, setGameSession] = useState<any>(null);
-  const [holders, setHolders] = useState<any[]>([]);
-  const [holdersLoading, setHoldersLoading] = useState(true);
-  const [holdersError, setHoldersError] = useState<string | null>(null);
+  const [damageDealers, setDamageDealers] = useState<any[]>([]);
+  const [damageLoading, setDamageLoading] = useState(true);
+  const [damageError, setDamageError] = useState<string | null>(null);
   const [bossDefeated, setBossDefeated] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -433,11 +444,13 @@ export default function Home() {
     }
   };
 
-  const loadHolders = async () => {
+  const loadDamageDealers = async () => {
+    if (!currentBoss) return;
+    
     try {
-      setHoldersLoading(true);
-      setHoldersError(null);
-      const response = await fetch("/api/holders?limit=50");
+      setDamageLoading(true);
+      setDamageError(null);
+      const response = await fetch(`/api/damage?bossId=${currentBoss.id}&limit=50`);
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -446,34 +459,21 @@ export default function Home() {
       const data = await response.json();
 
       if (data.error) {
-        // Se for erro de limitação do RPC, mostrar mensagem mais amigável
-        if (data.isRpcLimit || response.status === 503) {
-          setHoldersError(
-            "Este token tem muitos holders. O RPC atual não consegue buscar todos de uma vez. " +
-            "Os holders podem aparecer parcialmente ou não aparecer."
-          );
-        } else {
-          setHoldersError(data.error);
-        }
-        setHolders([]);
-      } else if (data.holders && Array.isArray(data.holders)) {
-        setHolders(data.holders);
-        setHoldersError(null);
+        setDamageError(data.error);
+        setDamageDealers([]);
+      } else if (data.dealers && Array.isArray(data.dealers)) {
+        setDamageDealers(data.dealers);
+        setDamageError(null);
       } else {
-        // Se não tem estrutura esperada, tentar usar como array direto (fallback)
-        if (Array.isArray(data)) {
-          setHolders(data);
-        } else {
-          setHolders([]);
-          setHoldersError("Formato de resposta inválido");
-        }
+        setDamageDealers([]);
+        setDamageError("Formato de resposta inválido");
       }
     } catch (error: any) {
-      console.error("Error loading holders:", error);
-      setHoldersError(error?.message || "Erro ao carregar holders");
-      setHolders([]);
+      console.error("Error loading damage dealers:", error);
+      setDamageError(error?.message || "Erro ao carregar ranking de dano");
+      setDamageDealers([]);
     } finally {
-      setHoldersLoading(false);
+      setDamageLoading(false);
     }
   };
 
@@ -573,7 +573,9 @@ export default function Home() {
 
   useEffect(() => {
     loadGameData();
-    loadHolders();
+    if (currentBoss) {
+      loadDamageDealers();
+    }
 
     const initTimer = setTimeout(() => {
       connectWebSocket();
@@ -611,14 +613,22 @@ export default function Home() {
   }, [currentBoss, wsConnected, connectWebSocket]);
 
   useEffect(() => {
-    const holdersRefreshInterval = setInterval(() => {
-      if (!holdersLoading) {
-        loadHolders();
-      }
-    }, 5 * 60 * 1000);
+    if (currentBoss) {
+      loadDamageDealers();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentBoss]);
 
-    return () => clearInterval(holdersRefreshInterval);
-  }, [holdersLoading]);
+  useEffect(() => {
+    const damageRefreshInterval = setInterval(() => {
+      if (!damageLoading && currentBoss) {
+        loadDamageDealers();
+      }
+    }, 30 * 1000); // Atualizar a cada 30 segundos
+
+    return () => clearInterval(damageRefreshInterval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [damageLoading, currentBoss]);
 
   return (
     <div className="min-h-screen bg-black text-gray-300 overflow-hidden relative">
@@ -739,114 +749,119 @@ export default function Home() {
             )}
           </div>
 
-          {/* Twitter Link */}
-          {twitterUrl && (
-            <a
-              href={twitterUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group relative bg-linear-to-r from-blue-900/40 via-blue-800/30 to-cyan-900/40 backdrop-blur-sm border border-blue-500/30 rounded-xl px-6 py-3 hover:border-blue-400/50 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/20 flex items-center gap-3"
-            >
-              <div className="flex flex-col">
-                <span className="text-xs text-blue-300/70 uppercase tracking-wider mb-1">Follow Us</span>
-                <span className="text-sm font-semibold text-white">Twitter</span>
-              </div>
-              <div className="text-blue-400 group-hover:translate-x-1 transition-transform">→</div>
-            </a>
-          )}
+          <a
+            href={twitterUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group relative bg-linear-to-r from-blue-900/40 via-blue-800/30 to-cyan-900/40 backdrop-blur-sm border border-blue-500/30 rounded-xl px-6 py-3 hover:border-blue-400/50 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/20 flex items-center gap-3"
+          >
+            <div className="flex flex-col">
+              <span className="text-xs text-blue-300/70 uppercase tracking-wider mb-1">Follow Us</span>
+              <span className="text-sm font-semibold text-white">Twitter</span>
+            </div>
+            <div className="text-blue-400 group-hover:translate-x-1 transition-transform">→</div>
+          </a>
         </div>
       </div>
 
       <div className="relative z-10 boss-raid-layout flex flex-col xl:flex-row items-center justify-between px-4 gap-6 max-w-7xl mx-auto">
-        {/* Left Panel - Top Holders */}
+        {/* Left Panel - Top Damage Dealers */}
         <div className="left-panel w-full xl:w-80 flex flex-col space-y-4">
           <div className="bg-gray-900/40 backdrop-blur-sm border border-purple-500/20 rounded-xl p-4 h-96 xl:h-full">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-bold text-purple-300 flex items-center gap-2">
-                Top Holders
+                ⚔️ Top Damage
               </h3>
               <div className="flex items-center gap-2">
                 <div className="text-xs text-purple-400 bg-purple-900/30 px-2 py-1 rounded-full">
-                  {holdersLoading ? "LOADING" : holdersError ? "ERROR" : "LIVE"}
+                  {damageLoading ? "LOADING" : damageError ? "ERROR" : "LIVE"}
                 </div>
               </div>
             </div>
             <div className="space-y-2 overflow-y-auto h-72 xl:h-80 pr-2">
               {/* Header */}
               <div className="flex justify-between text-xs text-gray-400 border-b border-gray-700 pb-2 mb-2">
-                <span>Holder</span>
-                <span>Amount</span>
+                <span>Player</span>
+                <span>Net Damage</span>
               </div>
 
               {/* Loading State */}
-              {holdersLoading && (
+              {damageLoading && (
                 <div className="text-center text-gray-500 py-8">
                   <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-2"></div>
-                  <p className="text-sm">Loading holders...</p>
-                  <p className="text-xs mt-1">Querying blockchain</p>
+                  <p className="text-sm">Loading damage ranking...</p>
+                  <p className="text-xs mt-1">Calculating damage</p>
                 </div>
               )}
 
               {/* Error State */}
-              {holdersError && !holdersLoading && (
+              {damageError && !damageLoading && (
                 <div className="text-center py-8">
                   <div className="text-2xl mb-2">⚠️</div>
-                  <p className="text-sm text-yellow-400">Limitação do RPC</p>
-                  <p className="text-xs mt-1 text-gray-400 px-4">{holdersError}</p>
-                  {!holdersError.includes("muitos holders") && (
-                    <button
-                      onClick={loadHolders}
-                      className="mt-3 text-xs bg-purple-500/20 hover:bg-purple-500/30 px-3 py-1.5 rounded transition-colors"
-                    >
-                      Tentar Novamente
-                    </button>
-                  )}
+                  <p className="text-sm text-yellow-400">Erro ao carregar</p>
+                  <p className="text-xs mt-1 text-gray-400 px-4">{damageError}</p>
+                  <button
+                    onClick={loadDamageDealers}
+                    className="mt-3 text-xs bg-purple-500/20 hover:bg-purple-500/30 px-3 py-1.5 rounded transition-colors"
+                  >
+                    Tentar Novamente
+                  </button>
                 </div>
               )}
 
-              {/* Holders List */}
-              {!holdersLoading &&
-                !holdersError &&
-                holders.length > 0 &&
-                holders.map((holder) => (
+              {/* Damage Dealers List */}
+              {!damageLoading &&
+                !damageError &&
+                damageDealers.length > 0 &&
+                damageDealers.map((dealer) => (
                   <div
-                    key={holder.address}
+                    key={dealer.address}
                     className="flex justify-between items-center py-2 border-b border-gray-800/50 hover:bg-gray-800/20 rounded px-2 -mx-2 transition-colors"
                   >
                     <div className="flex items-center gap-2">
                       <div
-                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${holder.rank === 1
+                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${dealer.rank === 1
                             ? "bg-yellow-500/20 text-yellow-300 border border-yellow-500/30"
-                            : holder.rank === 2
+                            : dealer.rank === 2
                               ? "bg-gray-400/20 text-gray-300 border border-gray-400/30"
-                              : holder.rank === 3
+                              : dealer.rank === 3
                                 ? "bg-orange-500/20 text-orange-300 border border-orange-500/30"
-                                : "bg-purple-500/20 text-purple-300 border border-purple-500/30"
+                                : "bg-red-500/20 text-red-300 border border-red-500/30"
                           }`}
                       >
-                        {holder.rank <= 3 ? "🏆" : holder.rank}
+                        {dealer.rank <= 3 ? "⚔️" : dealer.rank}
                       </div>
                       <div className="flex flex-col">
                         <span className="text-sm text-gray-300 font-mono">
-                          {holder.shortAddress}
+                          {dealer.shortAddress}
                         </span>
                         <span className="text-xs text-gray-500">
-                          {holder.percentage.toFixed(1)}%
+                          {dealer.buyCount} buys, {dealer.sellCount} sells
                         </span>
                       </div>
                     </div>
-                    <span className="text-sm text-purple-300 font-bold">
-                      {holder.formattedAmount}
-                    </span>
+                    <div className="flex flex-col items-end">
+                      <span className="text-sm text-red-400 font-bold">
+                        {dealer.formattedNetDamage}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {dealer.totalDamage > 0 && (
+                          <span className="text-red-300">+{formatDamage(dealer.totalDamage)}</span>
+                        )}
+                        {dealer.totalHeal > 0 && (
+                          <span className="text-green-300"> -{formatDamage(dealer.totalHeal)}</span>
+                        )}
+                      </span>
+                    </div>
                   </div>
                 ))}
 
               {/* Empty State */}
-              {!holdersLoading && !holdersError && holders.length === 0 && (
+              {!damageLoading && !damageError && damageDealers.length === 0 && (
                 <div className="text-center text-gray-500 py-8">
-                  <div className="text-2xl mb-2">📊</div>
-                  <p className="text-sm">No holders found</p>
-                  <p className="text-xs mt-1">Token may have no holders yet</p>
+                  <div className="text-2xl mb-2">⚔️</div>
+                  <p className="text-sm">No damage dealers yet</p>
+                  <p className="text-xs mt-1">Start trading to appear here!</p>
                 </div>
               )}
             </div>
@@ -903,12 +918,12 @@ export default function Home() {
                   <div className="relative z-10 overflow-hidden rounded-lg">
                     <div
                       className={`relative rounded-lg transition-all duration-500 ease-in-out transform ${bossState === "dead"
-                          ? "grayscale opacity-50 scale-90 filter brightness-50"
-                          : bossState === "hitting"
-                            ? "scale-110 brightness-110"
-                            : bossState === "healing"
-                              ? "scale-105 brightness-110"
-                              : "scale-100 brightness-100"
+                        ? "grayscale opacity-50 scale-90 filter brightness-50"
+                        : bossState === "hitting"
+                          ? "scale-110 brightness-110"
+                          : bossState === "healing"
+                            ? "scale-105 brightness-110"
+                            : "scale-100 brightness-100"
                         } ${isAnimating ? "animate-pulse" : ""}`}
                     >
                       <Image
@@ -992,16 +1007,16 @@ export default function Home() {
                         <div className="w-full bg-gray-800/50 rounded-full h-6 border border-gray-600/50 overflow-hidden shadow-inner">
                           <div
                             className={`h-full transition-all duration-1000 ease-out relative rounded-full ${currentBoss.currentHealth >
-                                currentBoss.maxHealth * 0.6
-                                ? "bg-linear-to-r from-green-500 via-green-400 to-emerald-500"
-                                : currentBoss.currentHealth >
-                                  currentBoss.maxHealth * 0.3
-                                  ? "bg-linear-to-r from-yellow-500 via-orange-500 to-red-500"
-                                  : "bg-linear-to-r from-red-600 via-red-500 to-red-700"
+                              currentBoss.maxHealth * 0.6
+                              ? "bg-linear-to-r from-green-500 via-green-400 to-emerald-500"
+                              : currentBoss.currentHealth >
+                                currentBoss.maxHealth * 0.3
+                                ? "bg-linear-to-r from-yellow-500 via-orange-500 to-red-500"
+                                : "bg-linear-to-r from-red-600 via-red-500 to-red-700"
                               }`}
                             style={{
                               width: `${(currentBoss.currentHealth /
-                                  currentBoss.maxHealth) *
+                                currentBoss.maxHealth) *
                                 100
                                 }%`,
                             }}
@@ -1093,8 +1108,8 @@ export default function Home() {
                     <div className="flex items-center gap-2">
                       <div
                         className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${trade.type === "buy"
-                            ? "bg-red-500/20 text-red-300 border border-red-500/30"
-                            : "bg-green-500/20 text-green-300 border border-green-500/30"
+                          ? "bg-red-500/20 text-red-300 border border-red-500/30"
+                          : "bg-green-500/20 text-green-300 border border-green-500/30"
                           }`}
                       >
                         {trade.type === "buy" ? "🗡️" : "💚"}
@@ -1111,8 +1126,8 @@ export default function Home() {
                     <div className="text-right">
                       <div
                         className={`text-sm font-bold ${trade.type === "buy"
-                            ? "text-red-400"
-                            : "text-green-400"
+                          ? "text-red-400"
+                          : "text-green-400"
                           }`}
                       >
                         {trade.type === "buy"

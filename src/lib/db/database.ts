@@ -49,6 +49,7 @@ export interface PumpPortalTrade {
   healApplied?: number;
   timestamp: string;
   createdAt: string;
+  traderAddress?: string;
 }
 
 export interface PumpPortalToken {
@@ -294,11 +295,27 @@ export async function getCurrentBoss(): Promise<Boss | null> {
 export async function saveTrade(trade: Omit<PumpPortalTrade, "id" | "createdAt">): Promise<void> {
   const { data: existing } = await supabase
     .from("trades")
-    .select("id")
+    .select("id, trader_address")
     .eq("signature", trade.signature)
     .maybeSingle();
 
-  if (existing) return;
+  if (existing) {
+    // Se já existe mas não tem trader_address, atualizar em background
+    if (!existing.trader_address && trade.traderAddress) {
+      // Atualizar em background sem bloquear
+      (async () => {
+        try {
+          await supabase
+            .from("trades")
+            .update({ trader_address: trade.traderAddress })
+            .eq("signature", trade.signature);
+        } catch {
+          // Ignorar erros em background
+        }
+      })();
+    }
+    return;
+  }
 
   const { error } = await supabase.from("trades").insert({
     boss_id: trade.bossId,
@@ -310,9 +327,54 @@ export async function saveTrade(trade: Omit<PumpPortalTrade, "id" | "createdAt">
     damage_dealt: trade.damageDealt ?? null,
     heal_applied: trade.healApplied ?? null,
     timestamp: trade.timestamp,
+    trader_address: trade.traderAddress ?? null,
   });
 
-  if (error) throw new Error(`saveTrade: ${error.message}`);
+  // Ignorar erro de duplicate key (pode acontecer em race conditions)
+  if (error) {
+    // Código 23505 é "unique_violation" no PostgreSQL
+    if (error.code === "23505" || error.message.includes("duplicate key") || error.message.includes("unique constraint")) {
+      console.log(`Trade ${trade.signature} already exists, skipping...`);
+      return;
+    }
+    throw new Error(`saveTrade: ${error.message}`);
+  }
+
+  // Se não tinha trader_address, buscar em background (não bloqueia)
+  if (!trade.traderAddress) {
+    fetchTraderAddressInBackground(trade.signature).catch(() => {});
+  }
+}
+
+// Função para buscar trader address em background (não bloqueia a resposta)
+async function fetchTraderAddressInBackground(signature: string): Promise<void> {
+  try {
+    const rpcUrl = process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+    const { Connection } = await import("@solana/web3.js");
+    const connection = new Connection(rpcUrl, "confirmed");
+
+    const tx = await connection.getTransaction(signature, {
+      maxSupportedTransactionVersion: 0,
+    });
+
+    if (tx && tx.transaction.message.staticAccountKeys.length > 0) {
+      const traderAddress = tx.transaction.message.staticAccountKeys[0].toBase58();
+      
+      const { error } = await supabase
+        .from("trades")
+        .update({ trader_address: traderAddress })
+        .eq("signature", signature);
+      
+      if (error) {
+        console.log(`Error updating trader_address for ${signature}:`, error);
+      } else {
+        console.log(`Updated trader_address for ${signature}: ${traderAddress}`);
+      }
+    }
+  } catch (error) {
+    // Log mas não falha - não é crítico
+    console.log(`Could not fetch trader address for ${signature}:`, error);
+  }
 }
 
 export async function getTradesForBoss(
@@ -328,6 +390,62 @@ export async function getTradesForBoss(
 
   if (error) return [];
   return (data || []).map(mapRowToTrade);
+}
+
+export interface TopDamageDealer {
+  address: string;
+  totalDamage: number;
+  totalHeal: number;
+  netDamage: number; // damage - heal
+  buyCount: number;
+  sellCount: number;
+}
+
+export async function getTopDamageDealers(
+  bossId: number,
+  limit: number = 50
+): Promise<TopDamageDealer[]> {
+  // Buscar todas as trades do boss
+  const { data, error } = await supabase
+    .from("trades")
+    .select("*")
+    .eq("boss_id", bossId)
+    .order("timestamp", { ascending: false });
+
+  if (error || !data) return [];
+
+  // Agrupar por signature primeiro (para depois buscar o trader)
+  const tradesBySignature = new Map<string, {
+    damageDealt: number;
+    healApplied: number;
+    buyCount: number;
+    sellCount: number;
+  }>();
+
+  for (const trade of data) {
+    const sig = String(trade.signature);
+    const damage = trade.damage_dealt ? Number(trade.damage_dealt) : 0;
+    const heal = trade.heal_applied ? Number(trade.heal_applied) : 0;
+    const txType = String(trade.tx_type);
+
+    const existing = tradesBySignature.get(sig) || {
+      damageDealt: 0,
+      healApplied: 0,
+      buyCount: 0,
+      sellCount: 0,
+    };
+
+    existing.damageDealt += damage;
+    existing.healApplied += heal;
+    if (txType === "buy") existing.buyCount++;
+    if (txType === "sell") existing.sellCount++;
+
+    tradesBySignature.set(sig, existing);
+  }
+
+  // Retornar agrupado por signature (será resolvido na API usando RPC)
+  // Por enquanto, retornamos vazio e a API vai buscar os signers
+  return [];
 }
 
 // --- Game session operations ---
