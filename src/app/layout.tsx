@@ -75,7 +75,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
       className={`scroll-smooth antialiased ${sora.variable} ${beVietnamPro.variable}`}
     >
       <head>
-        <link rel="icon" href="/logo.jpg" />
+        <link rel="icon" href="/logo_boss.png" />
         <meta name="color-scheme" content="dark" />
       </head>
       <body className="min-h-screen bg-background text-foreground flex flex-col">
