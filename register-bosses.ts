@@ -21,6 +21,7 @@ const bossesData = [
     buyDmg: 4.5,
     sellHeal: 20,
     twitter: "https://x.com/quantgz",
+    wallet: "Fi2hrxExy6TJnKcbPtQpo6iZzX9SUVbB9mDw6d29NgCn",
     sprites: {
       idle: "/b1-quant-kid/quant-kid-idle.png",
       hitting: "/b1-quant-kid/quant-kid-hitting.png",
@@ -37,6 +38,7 @@ const bossesData = [
     buyDmg: 6,
     sellHeal: 25,
     twitter: "https://x.com/CookerFlips",
+    wallet: "8deJ9xeUvXSJwicYptA9mHsU2rN2pDx37KWzkDkEXhU6",
     sprites: {
       idle: "/b2-cooker-flips/cooker-flips-idle.png",
       hitting: "/b2-cooker-flips/cooker-flips-hitting.png",
@@ -53,6 +55,7 @@ const bossesData = [
     buyDmg: 8,
     sellHeal: 30,
     twitter: "https://x.com/Cupseyy",
+    wallet: "2fg5QD1eD7rzNNCsvnhmXFm5hqNgwTTG8p7kQ6f3rx6f",
     sprites: {
       idle: "/b3-cupsey/cupsey-idle.png",
       hitting: "/b3-cupsey/cupsey-hitting.png",
@@ -69,6 +72,7 @@ const bossesData = [
     buyDmg: 10,
     sellHeal: 40,
     twitter: "https://x.com/orangie",
+    wallet: "26kZ9rg8Y5pd4j1tdT4cbT8BQRu5uDbXkaVs3L5QasHy",
     sprites: {
       idle: "/b4-orangie/orangie-idle.png",
       hitting: "/b4-orangie/orangie-hitting.png",
@@ -85,6 +89,7 @@ const bossesData = [
     buyDmg: 12,
     sellHeal: 45,
     twitter: "https://x.com/98sThoughts",
+    wallet: "8yKxiYRTgMsFmR5PGdYw6rX8SbxdjBEZjjEvmXdjxXPK",
     sprites: {
       idle: "/b5-ninety/b5-ninety-ghost/ninety-idle.png",
       hitting: "/b5-ninety/b5-ninety-ghost/ninety-hitting.png",
@@ -93,14 +98,32 @@ const bossesData = [
     }
   },
   {
-    id: "threadguy",
-    name: "Threadguy",
+    id: "gake",
+    name: "Gake",
     hpMax: 35000,
     buyWeight: 0.5,
     sellWeight: 0.5,
     buyDmg: 15,
     sellHeal: 50,
+    twitter: "https://x.com/Ga__ke",
+    wallet: "EwTNPYTuwxMzrvL19nzBsSLXdAoEmVBKkisN87csKgtt",
+    sprites: {
+      idle: "/gake/gake-idle.png",
+      hitting: "/gake/gake-hitting.png",
+      healing: "/gake/gake-healing.png",
+      dead: "/gake/gake-dead.png"
+    }
+  },
+  {
+    id: "threadguy",
+    name: "Threadguy",
+    hpMax: 50000,
+    buyWeight: 0.5,
+    sellWeight: 0.5,
+    buyDmg: 15,
+    sellHeal: 50,
     twitter: "https://x.com/notthreadguy",
+    wallet: "BcZangKMo5BmcEoBVM7MgBwNaH2KNBL358Q7TEmC7EdA",
     sprites: {
       idle: "/b6-threadguy/threadguy-idle.png",
       hitting: "/b6-threadguy/threadguy-hitting.png",
@@ -117,6 +140,7 @@ const bossesData = [
     buyDmg: 18,
     sellHeal: 60,
     twitter: "https://x.com/frankdegods",
+    wallet: "498g1rVnFcnjBjpfw1xyqA1WvgQXUU8RWuELjxkjAayQ",
     sprites: {
       idle: "/b7-frankdegods/frankdegods-idle.png",
       hitting: "/b7-frankdegods/frankdegods-hitting.png",
@@ -133,6 +157,7 @@ const bossesData = [
     buyDmg: 20,
     sellHeal: 70,
     twitter: "https://x.com/HsakaTrades",
+    wallet: "6DtEedWf9Wk5hA7Xth82Eq441yf5DA4aGLqaQAVfDokm",
     sprites: {
       idle: "/b8-alon/alon-idle.png",
       hitting: "/b8-alon/alon-hitting.png",
@@ -149,6 +174,7 @@ const bossesData = [
     buyDmg: 22,
     sellHeal: 80,
     twitter: "https://x.com/a1lon9",
+    wallet: "",
     sprites: {
       idle: "/b8-hsaka/hsaka-idle.png",
       hitting: "/b8-hsaka/hsaka-hitting.png",
@@ -165,13 +191,14 @@ const bossesData = [
     buyDmg: 25,
     sellHeal: 90,
     twitter: "https://x.com/toly",
+    wallet: "Fdv3EQykFyxFpDf6SFB9TuaWdVFtmZeav3hrhrvQzZbM",
     sprites: {
       idle: "/b9-toly-wizard/toly-wizard-idle.png",
       hitting: "/b9-toly-wizard/toly-wizard-hitting.png",
       healing: "/b9-toly-wizard/toly-wizard-healing.png",
       dead: "/b9-toly-wizard/toly-wizard-dead.png"
     }
-  }
+  },
 ];
 
 async function registerBosses() {

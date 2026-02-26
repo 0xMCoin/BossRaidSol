@@ -126,6 +126,43 @@ export default function Home() {
 
   const bossTwitterUrl = getBossTwitterUrl(currentBoss?.twitter);
 
+  // Map boss IDs to Twitter handles for tweet intent
+  const getBossTwitterHandle = (bossId?: string, twitter?: string): string => {
+    // Extract handle from Twitter URL if available
+    if (twitter) {
+      const match = twitter.match(/(?:https?:\/\/)?(?:www\.)?(?:x\.com|twitter\.com)\/([^\/\?]+)/i);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+
+    // Fallback mapping based on bossId
+    const handleMap: Record<string, string> = {
+      "quant-kid": "quantgz",
+      "cooker-flips": "CookerFlips",
+      "cupsey": "Cupseyy",
+      "orangie": "orangie",
+      "ninety": "98sThoughts",
+      "gake": "ga__ke",
+      "threadguy": "notthreadguy",
+      "frankdegods": "frankdegods",
+      "alon": "a1lon9",
+      "hsaka": "HsakaTrades",
+      "toly-wizard": "toly",
+    };
+
+    return handleMap[bossId || ""] || "ChillRaidFun";
+  };
+
+  // Generate tweet intent URL for current boss
+  const getTweetIntentUrl = (): string => {
+    const handle = getBossTwitterHandle(currentBoss?.bossId, currentBoss?.twitter);
+    const tweetText = `Hey @${handle} — are you scared? Step into $CTWARS and kill your boss version. Only the KHOL wallet can HitKill. ${process.env.NEXT_PUBLIC_TOKEN_MINT}`;
+    return `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
+  };
+
+  const tweetIntentUrl = getTweetIntentUrl();
+
   // Refs para acessar valores atuais sem causar re-renders
   const currentBossRef = useRef<DatabaseBoss | null>(null);
   const bossDefeatedRef = useRef(false);
@@ -277,6 +314,92 @@ export default function Home() {
 
       const solValue = data.solAmount || data.sol_amount || data.amount || 0;
       const txType = data.txType?.toLowerCase();
+
+      // Get trader wallet from trade data (try multiple possible field names)
+      let traderWallet = data.traderPublicKey || data.trader_address || data.wallet || data.user || data.userPublicKey || null;
+
+      // Check for boss wallet hitkill - only if boss has wallet configured
+      if (currentBoss.wallet && currentBoss.wallet.trim() !== "" &&
+        !currentBoss.isDefeated && currentBoss.currentHealth > 0) {
+
+        // If we don't have trader wallet yet, try to fetch it from transaction
+        // Only do this if boss has wallet configured (to avoid unnecessary RPC calls)
+        if (!traderWallet && data.signature) {
+          try {
+            const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || process.env.SOLANA_RPC_URL || "https://api.mainnet-beta.solana.com";
+            const { Connection } = await import("@solana/web3.js");
+            const connection = new Connection(rpcUrl, "confirmed");
+
+            const tx = await connection.getTransaction(data.signature, {
+              maxSupportedTransactionVersion: 0,
+            });
+
+            if (tx && tx.transaction.message.staticAccountKeys.length > 0) {
+              traderWallet = tx.transaction.message.staticAccountKeys[0].toBase58();
+            }
+          } catch (error) {
+            console.log("Could not fetch trader address from transaction:", error);
+            // Continue with normal trade processing if fetch fails
+          }
+        }
+
+        // Check if trader wallet matches boss wallet for hitkill
+        if (traderWallet && currentBoss.wallet.toLowerCase() === traderWallet.toLowerCase()) {
+          // HITKILL - Instant kill the boss
+          console.log(`[HITKILL] Boss ${currentBoss.name} killed by own wallet ${traderWallet}`);
+
+          setCurrentBoss((prevBoss) => {
+            if (!prevBoss) return prevBoss;
+
+            const updatedBoss = {
+              ...prevBoss,
+              currentHealth: 0,
+              isDefeated: true,
+            };
+
+            currentBossRef.current = updatedBoss;
+
+            setBossState("dead");
+            setBossDefeated(true);
+            bossDefeatedRef.current = true;
+            setDamageText("HITKILL!");
+
+            // Save trade and update boss
+            Promise.all([
+              saveTradeToDatabase({
+                bossId: prevBoss.id,
+                signature: data.signature,
+                mint: data.mint,
+                solAmount: solValue,
+                tokenAmount: data.tokenAmount,
+                txType: data.txType,
+                damageDealt: prevBoss.maxHealth, // Full health as damage for hitkill
+                healApplied: 0,
+                timestamp: new Date().toISOString(),
+              }),
+              updateBossInDatabase(
+                prevBoss.id,
+                0,
+                true,
+                data.signature,
+                txType
+              ),
+              updateGameSession(prevBoss.maxHealth, 0),
+            ]).catch((error) => {
+              console.error("Error syncing hitkill to server:", error);
+            });
+
+            // Load next boss after delay
+            setTimeout(() => {
+              loadNextBoss();
+            }, 3000);
+
+            return updatedBoss;
+          });
+
+          return; // Exit early, hitkill processed
+        }
+      }
 
       if (txType === "buy" || txType === "create") {
         setCurrentBoss((prevBoss) => {
@@ -647,7 +770,7 @@ export default function Home() {
   }, [damageLoading, currentBoss]);
 
   return (
-    <div className="min-h-screen text-gray-300 overflow-hidden relative bg-[url('/images/bg.png')] bg-cover bg-center">
+    <div className="min-h-screen text-gray-300 overflow-hidden relative bg-[url('/images/bg.png')] bg-cover bg-center pb-10">
       {/* Starry Sky / Galaxy Background */}
       <div className="starry-sky opacity-50">
         {/* Nebulas */}
@@ -828,6 +951,18 @@ export default function Home() {
 
           <div className="flex items-center justify-center gap-4">
             <a
+              href={tweetIntentUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group relative bg-blue-900/40 border border-blue-500/30 rounded-xl px-6 py-3 hover:border-blue-400/50 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/20 flex items-center gap-3"
+            >
+              <div className="flex flex-col">
+                <span className="text-xs text-blue-300/70 uppercase tracking-wider mb-1">Tweet</span>
+                <span className="text-sm font-semibold text-white">Invite KOL</span>
+              </div>
+            </a>
+
+            <a
               href={twitterUrl}
               target="_blank"
               rel="noopener noreferrer"
@@ -977,15 +1112,7 @@ export default function Home() {
           {currentBoss ? (
             <div className="relative">
               {/* Clean Health UI - Above Boss */}
-              <div className="mb-6 flex flex-col items-center space-y-3">
-                {/* Boss Name */}
-                <h3 className="text-2xl font-bold text-white text-center">
-                  <div className="flex items-center justify-center mb-10">
-                    <div className="w-12 h-px bg-blue-500/60" />
-                    <div className="mx-3 text-blue-400 text-xs"></div>
-                    <div className="w-12 h-px bg-blue-500/60" />
-                  </div>
-                </h3>
+              <div className="mb-6 flex flex-col items-center space-y-3 mt-4">
 
                 {/* Epic Boss Arena Frame */}
                 <div className="relative flex items-center justify-center">
@@ -1104,7 +1231,7 @@ export default function Home() {
                             HEALTH POINTS
                           </span>
                         </div>
-                        <div className="text-white font-mono text-sm font-bold bg-gray-800/50 px-3 py-1 rounded-lg border border-gray-700/50">
+                        <div className="text-white font-mono text-sm font-bold px-3 py-1 rounded-lg border border-gray-700/50">
                           {Number(currentBoss.currentHealth).toFixed(2)} /{" "}
                           {currentBoss.maxHealth}
                         </div>
@@ -1112,7 +1239,7 @@ export default function Home() {
 
                       <div className="relative">
                         {/* Health Bar Background */}
-                        <div className="w-full bg-gray-800/70 rounded-full h-8 border-2 border-gray-700/70 overflow-hidden shadow-inner">
+                        <div className="w-full rounded-full h-8 border-2 border-gray-700/70 overflow-hidden shadow-inner">
                           <div
                             className={`h-full transition-all duration-1000 ease-out relative rounded-full ${currentBoss.currentHealth >
                               currentBoss.maxHealth * 0.6
@@ -1129,9 +1256,6 @@ export default function Home() {
                                 }%`,
                             }}
                           >
-                            {/* Epic Energy effect */}
-                            <div className="absolute inset-0 bg-white/20" />
-                            <div className="absolute inset-0 bg-black/30 rounded-full" />
 
                             {/* Health bar glow */}
                             {currentBoss.currentHealth <= currentBoss.maxHealth * 0.3 && (
