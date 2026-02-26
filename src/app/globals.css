@@ -237,6 +237,91 @@ body {
   }
 }
 
+@keyframes battleGlow {
+  0%, 100% {
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.4), 0 0 60px rgba(139, 92, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 50px rgba(239, 68, 68, 0.7), 0 0 100px rgba(139, 92, 246, 0.5);
+  }
+}
+
+@keyframes damageFlash {
+  0% {
+    opacity: 0;
+    transform: scale(0.8) translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2) translateY(-20px);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1) translateY(-40px);
+  }
+}
+
+@keyframes healPulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(34, 197, 94, 0.8), 0 0 60px rgba(34, 197, 94, 0.5);
+  }
+}
+
+@keyframes bossShake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-5px) rotate(-1deg);
+  }
+  75% {
+    transform: translateX(5px) rotate(1deg);
+  }
+}
+
+@keyframes healthBarPulse {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.6), 0 0 30px rgba(239, 68, 68, 0.4);
+  }
+}
+
+@keyframes particleFloat {
+  0% {
+    transform: translateY(0) translateX(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100vh) translateX(50px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+@keyframes battleAura {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.6;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes textGlow {
+  0%, 100% {
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.5), 0 0 20px rgba(139, 92, 246, 0.5);
+  }
+  50% {
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.8), 0 0 40px rgba(139, 92, 246, 0.8), 0 0 60px rgba(139, 92, 246, 0.5);
+  }
+}
+
 .animate-energy-pulse {
   animation: energyPulse 2s ease-in-out infinite;
 }
@@ -247,4 +332,36 @@ body {
 
 .animate-arena-scan {
   animation: arenaScan 8s linear infinite;
+}
+
+.animate-battle-glow {
+  animation: battleGlow 2s ease-in-out infinite;
+}
+
+.animate-damage-flash {
+  animation: damageFlash 1.5s ease-out forwards;
+}
+
+.animate-heal-pulse {
+  animation: healPulse 1.5s ease-in-out infinite;
+}
+
+.animate-boss-shake {
+  animation: bossShake 0.5s ease-in-out;
+}
+
+.animate-health-pulse {
+  animation: healthBarPulse 2s ease-in-out infinite;
+}
+
+.animate-particle-float {
+  animation: particleFloat 8s linear infinite;
+}
+
+.animate-battle-aura {
+  animation: battleAura 3s ease-in-out infinite;
+}
+
+.animate-text-glow {
+  animation: textGlow 2s ease-in-out infinite;
 }

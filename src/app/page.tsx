@@ -446,7 +446,7 @@ export default function Home() {
 
   const loadDamageDealers = async () => {
     if (!currentBoss) return;
-    
+
     try {
       setDamageLoading(true);
       setDamageError(null);
@@ -632,87 +632,108 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-black text-gray-300 overflow-hidden relative">
-      {/* Creative Arena Background */}
-      <div className="absolute inset-0 bg-linear-to-br from-gray-900 via-slate-900 to-black" />
+      {/* Epic Battle Arena Background */}
+      <div className="absolute inset-0 bg-black" />
 
-      {/* Hexagonal Grid Pattern */}
+      {/* Battle Atmosphere Layers */}
       <div className="absolute inset-0 opacity-20">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(139,92,246,0.1),transparent_50%)]" />
+        <div className="absolute inset-0 bg-red-500/10" />
+        <div className="absolute inset-0 bg-purple-500/10" />
+        <div className="absolute inset-0 bg-blue-500/10" />
+      </div>
+
+      {/* Dynamic Battle Grid Pattern */}
+      <div className="absolute inset-0 opacity-15">
+        <div className="absolute inset-0 bg-purple-500/20" />
+        {/* Battle particles effect */}
         <div
-          className="absolute inset-0 bg-[conic-gradient(from_0deg_at_50%_50%,transparent_0deg,rgba(59,130,246,0.05)_60deg,transparent_120deg,rgba(139,92,246,0.08)_180deg,transparent_240deg,rgba(59,130,246,0.05)_300deg,transparent_360deg)] animate-spin"
-          style={{ animationDuration: "20s" }}
+          className="absolute inset-0 opacity-20"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92FF' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+          }}
         />
       </div>
 
-      {/* Arena Border Lines */}
-      <div className="absolute inset-4 opacity-30">
-        <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-purple-500/50 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-purple-500/50 to-transparent" />
-        <div className="absolute left-0 top-0 bottom-0 w-px bg-linear-to-b from-transparent via-blue-500/50 to-transparent" />
-        <div className="absolute right-0 top-0 bottom-0 w-px bg-linear-to-b from-transparent via-blue-500/50 to-transparent" />
+      {/* Epic Battle Arena Border */}
+      <div className="absolute inset-4 opacity-40">
+        <div className="absolute top-0 left-0 right-0 h-[2px] bg-red-500/60" />
+        <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-red-500/60" />
+        <div className="absolute left-0 top-0 bottom-0 w-[2px] bg-blue-500/60" />
+        <div className="absolute right-0 top-0 bottom-0 w-[2px] bg-blue-500/60" />
       </div>
 
-      {/* Corner Accents */}
-      <div className="absolute top-4 left-4 w-8 h-8 opacity-40">
-        <div className="w-full h-full border-l-2 border-t-2 border-purple-400/60" />
-        <div className="absolute inset-1 border border-purple-300/20" />
+      {/* Battle Corner Accents - Enhanced */}
+      <div className="absolute top-4 left-4 w-12 h-12 opacity-60">
+        <div className="w-full h-full border-l-[3px] border-t-[3px] border-red-400/70" />
+        <div className="absolute inset-2 border border-red-300/30" />
+        <div className="absolute top-1 left-1 w-2 h-2 bg-red-500/50 rounded-full" />
       </div>
-      <div className="absolute top-4 right-4 w-8 h-8 opacity-40">
-        <div className="w-full h-full border-r-2 border-t-2 border-purple-400/60" />
-        <div className="absolute inset-1 border border-purple-300/20" />
+      <div className="absolute top-4 right-4 w-12 h-12 opacity-60">
+        <div className="w-full h-full border-r-[3px] border-t-[3px] border-purple-400/70" />
+        <div className="absolute inset-2 border border-purple-300/30" />
+        <div className="absolute top-1 right-1 w-2 h-2 bg-purple-500/50 rounded-full" />
       </div>
-      <div className="absolute bottom-4 left-4 w-8 h-8 opacity-40">
-        <div className="w-full h-full border-l-2 border-b-2 border-blue-400/60" />
-        <div className="absolute inset-1 border border-blue-300/20" />
+      <div className="absolute bottom-4 left-4 w-12 h-12 opacity-60">
+        <div className="w-full h-full border-l-[3px] border-b-[3px] border-blue-400/70" />
+        <div className="absolute inset-2 border border-blue-300/30" />
+        <div className="absolute bottom-1 left-1 w-2 h-2 bg-blue-500/50 rounded-full" />
       </div>
-      <div className="absolute bottom-4 right-4 w-8 h-8 opacity-40">
-        <div className="w-full h-full border-r-2 border-b-2 border-blue-400/60" />
-        <div className="absolute inset-1 border border-blue-300/20" />
-      </div>
-
-      {/* Side Panel Accents */}
-      <div className="absolute top-1/2 left-2 w-1 h-16 opacity-30">
-        <div className="w-full h-full bg-linear-to-b from-transparent via-purple-400/40 to-transparent" />
-      </div>
-      <div className="absolute top-1/2 right-2 w-1 h-16 opacity-30">
-        <div className="w-full h-full bg-linear-to-b from-transparent via-blue-400/40 to-transparent" />
+      <div className="absolute bottom-4 right-4 w-12 h-12 opacity-60">
+        <div className="w-full h-full border-r-[3px] border-b-[3px] border-purple-400/70" />
+        <div className="absolute inset-2 border border-purple-300/30" />
+        <div className="absolute bottom-1 right-1 w-2 h-2 bg-purple-500/50 rounded-full" />
       </div>
 
-      {/* Creative Header */}
+      {/* Battle Energy Orbs */}
+      <div className="absolute top-1/2 left-4 w-2 h-24 opacity-50">
+        <div className="w-full h-full bg-purple-400/60" />
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-purple-500/70 rounded-full" />
+      </div>
+      <div className="absolute top-1/2 right-4 w-2 h-24 opacity-50">
+        <div className="w-full h-full bg-blue-400/60" />
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-blue-500/70 rounded-full" />
+      </div>
+
+      {/* Epic Battle Header */}
       <div className="relative z-20 text-center py-8">
-        {/* Decorative Lines */}
-        <div className="flex items-center justify-center mb-4">
-          <div className="w-16 h-px bg-linear-to-r from-transparent via-purple-500/60 to-transparent" />
-          <div className="mx-4 w-2 h-2 bg-purple-500/80 rounded-full" />
-          <div className="text-purple-400 text-sm font-bold tracking-widest">
-            ⚔️
+        {/* Battle Decorative Lines - Enhanced */}
+        <div className="flex items-center justify-center mb-6">
+          <div className="w-24 h-[2px] bg-red-500/70" />
+          <div className="mx-4 w-3 h-3 bg-red-500/80 rounded-full" />
+          <div className="mx-2 text-purple-400 text-xl font-black tracking-widest">
+            RAID
           </div>
-          <div className="mx-4 w-2 h-2 bg-purple-500/80 rounded-full" />
-          <div className="w-16 h-px bg-linear-to-r from-transparent via-purple-500/60 to-transparent" />
+          <div className="mx-4 w-3 h-3 bg-purple-500/80 rounded-full" />
+          <div className="w-24 h-[2px] bg-red-500/70" />
         </div>
 
-        {/* Main Title */}
-        <h1 className="text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-linear-to-r from-white via-purple-200 to-white tracking-wider mb-2">
-          Boss: {currentBoss ? currentBoss.name : "Loading..."}
+        {/* Epic Main Title */}
+        <h1 className="text-6xl md:text-7xl font-black text-white tracking-wider mb-3 drop-shadow-2xl">
+          {currentBoss ? (
+            <>
+              <span className="inline-block">BOSS:</span>{" "}
+              <span className="inline-block">{currentBoss.name.toUpperCase()}</span>
+            </>
+          ) : (
+            "LOADING..."
+          )}
         </h1>
 
-        {/* Subtitle */}
-        <p className="text-purple-300/80 text-sm font-medium tracking-widest uppercase">
+        <p className="text-purple-300/70 text-xs font-medium tracking-widest uppercase">
           Real-time trading battle on Solana
         </p>
 
         {/* Token CA and Twitter - Prominent Display */}
         <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
           {/* Contract Address */}
-          <div className="group relative bg-linear-to-r from-purple-900/40 via-purple-800/30 to-blue-900/40 backdrop-blur-sm border border-purple-500/30 rounded-xl px-6 py-3 hover:border-purple-400/50 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/20">
+          <div className="group relative bg-purple-900/40 border border-purple-500/30 rounded-xl px-6 py-3 hover:border-purple-400/50 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/20">
             <div className="flex items-center gap-3">
-              <div className="text-purple-400 text-lg">🔗</div>
               <div className="flex flex-col">
                 <span className="text-xs text-purple-300/70 uppercase tracking-wider mb-1">Contract Address</span>
                 <div className="flex items-center gap-2">
                   <code className="text-sm font-mono text-white font-semibold">
                     {tokenMint
-                      ? `${tokenMint.slice(0, 4)}...${tokenMint.slice(-4)}`
+                      ? `${tokenMint}`
                       : "Not configured"}
                   </code>
                   {tokenMint && (
@@ -722,7 +743,7 @@ export default function Home() {
                         // Visual feedback
                         const btn = e.currentTarget;
                         const originalText = btn.innerHTML;
-                        btn.innerHTML = "✓";
+                        btn.innerHTML = "Copied";
                         btn.classList.add("text-green-400");
                         setTimeout(() => {
                           btn.innerHTML = originalText;
@@ -732,7 +753,7 @@ export default function Home() {
                       className="text-purple-300 hover:text-purple-200 transition-colors text-sm"
                       title="Copy full address"
                     >
-                      📋
+                      Copy
                     </button>
                   )}
                 </div>
@@ -753,42 +774,51 @@ export default function Home() {
             href={twitterUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="group relative bg-linear-to-r from-blue-900/40 via-blue-800/30 to-cyan-900/40 backdrop-blur-sm border border-blue-500/30 rounded-xl px-6 py-3 hover:border-blue-400/50 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/20 flex items-center gap-3"
+            className="group relative bg-blue-900/40 border border-blue-500/30 rounded-xl px-6 py-3 hover:border-blue-400/50 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/20 flex items-center gap-3"
           >
             <div className="flex flex-col">
               <span className="text-xs text-blue-300/70 uppercase tracking-wider mb-1">Follow Us</span>
               <span className="text-sm font-semibold text-white">Twitter</span>
             </div>
-            <div className="text-blue-400 group-hover:translate-x-1 transition-transform">→</div>
+            <div className="text-blue-400 group-hover:translate-x-1 transition-transform">&gt;</div>
           </a>
         </div>
       </div>
 
       <div className="relative z-10 boss-raid-layout flex flex-col xl:flex-row items-center justify-between px-4 gap-6 max-w-7xl mx-auto">
-        {/* Left Panel - Top Damage Dealers */}
+        {/* Left Panel - Top Damage Dealers - Battle Style */}
         <div className="left-panel w-full xl:w-80 flex flex-col space-y-4">
-          <div className="bg-gray-900/40 backdrop-blur-sm border border-purple-500/20 rounded-xl p-4 h-96 xl:h-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-purple-300 flex items-center gap-2">
-                ⚔️ Top Damage
+          <div className="bg-gray-900/60 border-2 border-red-500/30 rounded-xl p-4 h-96 xl:h-full shadow-2xl shadow-red-500/20 relative overflow-hidden">
+            {/* Battle Panel Background Effect */}
+            <div className="absolute inset-0 bg-red-500/5" />
+            <div className="absolute top-0 left-0 right-0 h-[2px] bg-red-500/60" />
+
+            <div className="flex items-center justify-between mb-4 relative z-10">
+              <h3 className="text-xl font-black text-red-400 flex items-center gap-2">
+                <span>TOP DAMAGE</span>
               </h3>
               <div className="flex items-center gap-2">
-                <div className="text-xs text-purple-400 bg-purple-900/30 px-2 py-1 rounded-full">
+                <div className={`text-xs font-bold px-3 py-1.5 rounded-full border-2 ${damageLoading
+                  ? "text-yellow-400 bg-yellow-900/30 border-yellow-500/50"
+                  : damageError
+                    ? "text-red-400 bg-red-900/30 border-red-500/50"
+                    : "text-green-400 bg-green-900/30 border-green-500/50"
+                  }`}>
                   {damageLoading ? "LOADING" : damageError ? "ERROR" : "LIVE"}
                 </div>
               </div>
             </div>
             <div className="space-y-2 overflow-y-auto h-72 xl:h-80 pr-2">
-              {/* Header */}
-              <div className="flex justify-between text-xs text-gray-400 border-b border-gray-700 pb-2 mb-2">
-                <span>Player</span>
-                <span>Net Damage</span>
+              {/* Battle Header */}
+              <div className="flex justify-between text-xs font-bold text-gray-300 border-b-2 border-red-500/30 pb-2 mb-3 relative z-10">
+                <span className="text-red-400">PLAYER</span>
+                <span className="text-purple-400">NET DAMAGE</span>
               </div>
 
               {/* Loading State */}
               {damageLoading && (
                 <div className="text-center text-gray-500 py-8">
-                  <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-2"></div>
+                  <div className="w-8 h-8 border-2 border-purple-500/30 border-t-purple-500 rounded-full mx-auto mb-2"></div>
                   <p className="text-sm">Loading damage ranking...</p>
                   <p className="text-xs mt-1">Calculating damage</p>
                 </div>
@@ -797,7 +827,7 @@ export default function Home() {
               {/* Error State */}
               {damageError && !damageLoading && (
                 <div className="text-center py-8">
-                  <div className="text-2xl mb-2">⚠️</div>
+                  <div className="text-2xl mb-2"></div>
                   <p className="text-sm text-yellow-400">Erro ao carregar</p>
                   <p className="text-xs mt-1 text-gray-400 px-4">{damageError}</p>
                   <button
@@ -809,47 +839,47 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Damage Dealers List */}
+              {/* Damage Dealers List - Battle Style */}
               {!damageLoading &&
                 !damageError &&
                 damageDealers.length > 0 &&
                 damageDealers.map((dealer) => (
                   <div
                     key={dealer.address}
-                    className="flex justify-between items-center py-2 border-b border-gray-800/50 hover:bg-gray-800/20 rounded px-2 -mx-2 transition-colors"
+                    className="flex justify-between items-center py-3 border-b border-red-500/20 hover:bg-red-500/10 rounded-lg px-3 -mx-3 transition-all duration-300 relative z-10 group"
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <div
-                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${dealer.rank === 1
-                            ? "bg-yellow-500/20 text-yellow-300 border border-yellow-500/30"
-                            : dealer.rank === 2
-                              ? "bg-gray-400/20 text-gray-300 border border-gray-400/30"
-                              : dealer.rank === 3
-                                ? "bg-orange-500/20 text-orange-300 border border-orange-500/30"
-                                : "bg-red-500/20 text-red-300 border border-red-500/30"
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black border-2 shadow-lg ${dealer.rank === 1
+                          ? "bg-yellow-500/30 text-yellow-200 border-yellow-400/60"
+                          : dealer.rank === 2
+                            ? "bg-gray-400/30 text-gray-200 border-gray-400/60"
+                            : dealer.rank === 3
+                              ? "bg-orange-500/30 text-orange-200 border-orange-400/60"
+                              : "bg-red-500/30 text-red-200 border-red-400/60"
                           }`}
                       >
-                        {dealer.rank <= 3 ? "⚔️" : dealer.rank}
+                        {dealer.rank}
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-sm text-gray-300 font-mono">
+                        <span className="text-sm text-white font-bold font-mono group-hover:text-red-300 transition-colors">
                           {dealer.shortAddress}
                         </span>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-400">
                           {dealer.buyCount} buys, {dealer.sellCount} sells
                         </span>
                       </div>
                     </div>
                     <div className="flex flex-col items-end">
-                      <span className="text-sm text-red-400 font-bold">
+                      <span className="text-lg text-red-400 font-black drop-shadow-lg group-hover:scale-110 transition-transform">
                         {dealer.formattedNetDamage}
                       </span>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-gray-400">
                         {dealer.totalDamage > 0 && (
-                          <span className="text-red-300">+{formatDamage(dealer.totalDamage)}</span>
+                          <span className="text-red-300 font-semibold">+{formatDamage(dealer.totalDamage)}</span>
                         )}
                         {dealer.totalHeal > 0 && (
-                          <span className="text-green-300"> -{formatDamage(dealer.totalHeal)}</span>
+                          <span className="text-green-300 font-semibold"> -{formatDamage(dealer.totalHeal)}</span>
                         )}
                       </span>
                     </div>
@@ -859,7 +889,7 @@ export default function Home() {
               {/* Empty State */}
               {!damageLoading && !damageError && damageDealers.length === 0 && (
                 <div className="text-center text-gray-500 py-8">
-                  <div className="text-2xl mb-2">⚔️</div>
+                  <div className="text-2xl mb-2"></div>
                   <p className="text-sm">No damage dealers yet</p>
                   <p className="text-xs mt-1">Start trading to appear here!</p>
                 </div>
@@ -872,98 +902,102 @@ export default function Home() {
         <div className="boss-central flex-1 xl:flex-none xl:w-96 flex flex-col items-center justify-center max-w-2xl">
           {/* Main Boss Display */}
           {currentBoss ? (
-            <div className="relative animate-fadeIn">
+            <div className="relative">
               {/* Clean Health UI - Above Boss */}
               <div className="mb-6 flex flex-col items-center space-y-3">
                 {/* Boss Name */}
                 <h3 className="text-2xl font-bold text-white text-center">
                   <div className="flex items-center justify-center mb-10">
-                    <div className="w-12 h-px bg-linear-to-r from-transparent via-blue-500/60 to-transparent" />
-                    <div className="mx-3 text-blue-400 text-xs">◆</div>
-                    <div className="w-12 h-px bg-linear-to-r from-transparent via-blue-500/60 to-transparent" />
+                    <div className="w-12 h-px bg-blue-500/60" />
+                    <div className="mx-3 text-blue-400 text-xs"></div>
+                    <div className="w-12 h-px bg-blue-500/60" />
                   </div>
                 </h3>
 
-                {/* Boss Arena Frame */}
+                {/* Epic Boss Arena Frame */}
                 <div className="relative flex items-center justify-center">
-                  {/* Outer Frame */}
+                  {/* Epic Outer Battle Frame */}
                   <div className="absolute inset-0 scale-110">
-                    {/* Hexagonal Border */}
+                    {/* Multi-layer Battle Border */}
                     <div className="relative w-full h-full">
-                      <div className="absolute inset-2 border-2 border-purple-500/40 rounded-lg" />
-                      <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-2 w-4 h-4 border-l-2 border-r-2 border-t-2 border-purple-500/40 bg-black" />
-                      <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-2 w-4 h-4 border-l-2 border-r-2 border-b-2 border-purple-500/40 bg-black" />
-                      <div className="absolute left-0 top-1/2 transform -translate-x-2 -translate-y-1/2 w-4 h-4 border-l-2 border-t-2 border-b-2 border-purple-500/40 bg-black" />
-                      <div className="absolute right-0 top-1/2 transform translate-x-2 -translate-y-1/2 w-4 h-4 border-r-2 border-t-2 border-b-2 border-purple-500/40 bg-black" />
+                      <div className="absolute inset-2 border-[3px] border-red-500/50 rounded-xl shadow-lg shadow-red-500/30" />
+                      <div className="absolute inset-4 border-2 border-purple-500/40 rounded-lg" />
+                      <div className="absolute inset-6 border border-blue-500/30 rounded-md" />
+
+                      {/* Battle Corner Spikes */}
+                      <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-3 w-6 h-6 border-l-[3px] border-r-[3px] border-t-[3px] border-red-500/60 bg-black rotate-45" />
+                      <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-3 w-6 h-6 border-l-[3px] border-r-[3px] border-b-[3px] border-red-500/60 bg-black rotate-45" />
+                      <div className="absolute left-0 top-1/2 transform -translate-x-3 -translate-y-1/2 w-6 h-6 border-l-[3px] border-t-[3px] border-b-[3px] border-blue-500/60 bg-black rotate-45" />
+                      <div className="absolute right-0 top-1/2 transform translate-x-3 -translate-y-1/2 w-6 h-6 border-r-[3px] border-t-[3px] border-b-[3px] border-blue-500/60 bg-black rotate-45" />
                     </div>
 
-                    {/* Corner Crystals */}
-                    <div className="absolute -top-3 -left-3 w-6 h-6 bg-purple-500/20 border border-purple-400/50 transform rotate-45" />
-                    <div className="absolute -top-3 -right-3 w-6 h-6 bg-purple-500/20 border border-purple-400/50 transform rotate-45" />
-                    <div className="absolute -bottom-3 -left-3 w-6 h-6 bg-blue-500/20 border border-blue-400/50 transform rotate-45" />
-                    <div className="absolute -bottom-3 -right-3 w-6 h-6 bg-blue-500/20 border border-blue-400/50 transform rotate-45" />
+                    {/* Epic Corner Crystals - Enhanced */}
+                    <div className="absolute -top-4 -left-4 w-8 h-8 bg-red-500/30 border-2 border-red-400/70 transform rotate-45 shadow-lg shadow-red-500/50" />
+                    <div className="absolute -top-4 -right-4 w-8 h-8 bg-purple-500/30 border-2 border-purple-400/70 transform rotate-45 shadow-lg shadow-purple-500/50" />
+                    <div className="absolute -bottom-4 -left-4 w-8 h-8 bg-blue-500/30 border-2 border-blue-400/70 transform rotate-45 shadow-lg shadow-blue-500/50" />
+                    <div className="absolute -bottom-4 -right-4 w-8 h-8 bg-purple-500/30 border-2 border-purple-400/70 transform rotate-45 shadow-lg shadow-purple-500/50" />
 
-                    {/* Energy Rings */}
-                    <div
-                      className="absolute inset-0 rounded-full border border-purple-400/30 animate-ping"
-                      style={{ animationDuration: "3s" }}
-                    />
-                    <div
-                      className="absolute inset-4 rounded-full border border-blue-400/20 animate-ping"
-                      style={{ animationDuration: "4s", animationDelay: "1s" }}
-                    />
+                    {/* Battle Energy Rings - Multi-layer */}
+                    <div className="absolute inset-0 rounded-full border-2 border-red-400/40" />
+                    <div className="absolute inset-4 rounded-full border-2 border-purple-400/30" />
+                    <div className="absolute inset-8 rounded-full border border-blue-400/20" />
+
+                    {/* Battle Aura Effect */}
+                    <div className="absolute inset-0 rounded-full bg-red-500/10" />
                   </div>
 
-                  {/* Main Boss Image */}
-                  <div className="relative z-10 overflow-hidden rounded-lg">
+                  {/* Epic Main Boss Image */}
+                  <div className="relative z-10 overflow-hidden rounded-xl">
                     <div
-                      className={`relative rounded-lg transition-all duration-500 ease-in-out transform ${bossState === "dead"
+                      className={`relative rounded-xl transition-all duration-500 ease-in-out transform ${bossState === "dead"
                         ? "grayscale opacity-50 scale-90 filter brightness-50"
                         : bossState === "hitting"
-                          ? "scale-110 brightness-110"
+                          ? "scale-115 brightness-125"
                           : bossState === "healing"
-                            ? "scale-105 brightness-110"
+                            ? "scale-110 brightness-115"
                             : "scale-100 brightness-100"
-                        } ${isAnimating ? "animate-pulse" : ""}`}
+                        }`}
                     >
                       <Image
                         src={currentBoss.sprites[bossState]}
                         alt={`Boss ${currentBoss.name} ${bossState}`}
                         width={350}
                         height={350}
-                        className="boss-image drop-shadow-2xl rounded-lg transition-all duration-700 ease-out scale-125"
+                        className="boss-image drop-shadow-2xl rounded-xl transition-all duration-700 ease-out scale-125"
                         priority
                       />
 
-                      {/* Boss State Overlay Effects */}
+                      {/* Epic Boss State Overlay Effects */}
                       {bossState === "hitting" && (
-                        <div className="absolute inset-0 bg-red-500/15 rounded-full animate-ping" />
+                        <>
+                          <div className="absolute inset-0 bg-red-500/20 rounded-full" />
+                          <div className="absolute inset-0 bg-red-500/30 rounded-xl" />
+                          <div className="absolute inset-0 border-4 border-red-500/50 rounded-xl" />
+                        </>
                       )}
                       {bossState === "healing" && (
-                        <div className="absolute inset-0 bg-green-500/15 rounded-full animate-pulse" />
+                        <>
+                          <div className="absolute inset-0 bg-green-500/20 rounded-full" />
+                          <div className="absolute inset-0 bg-green-500/30 rounded-xl" />
+                          <div className="absolute inset-0 border-4 border-green-500/50 rounded-xl" />
+                        </>
                       )}
                     </div>
                   </div>
 
                   {damageText && (
-                    <div className="absolute top-1/4 left-1/2 transform -translate-x-1/2 animate-bounce">
+                    <div className="absolute top-1/4 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none">
                       <div className="relative">
-                        <span className="text-red-400 text-6xl font-black animate-pulse drop-shadow-2xl">
-                          {damageText}
-                        </span>
-                        <span className="absolute inset-0 text-red-400 text-6xl font-black blur-md animate-pulse">
+                        <span className="text-red-400 text-7xl md:text-8xl font-black drop-shadow-2xl">
                           {damageText}
                         </span>
                       </div>
                     </div>
                   )}
                   {healText && (
-                    <div className="absolute top-1/4 left-1/2 transform -translate-x-1/2 animate-bounce">
+                    <div className="absolute top-1/4 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none">
                       <div className="relative">
-                        <span className="text-green-400 text-6xl font-black animate-pulse drop-shadow-2xl">
-                          {healText}
-                        </span>
-                        <span className="absolute inset-0 text-green-400 text-6xl font-black blur-md animate-pulse">
+                        <span className="text-green-400 text-7xl md:text-8xl font-black drop-shadow-2xl">
                           {healText}
                         </span>
                       </div>
@@ -971,48 +1005,49 @@ export default function Home() {
                   )}
                 </div>
 
-                {/* Creative Health Bar UI */}
+                {/* Epic Battle Health Bar UI */}
                 <div className="w-96 max-w-lg mt-10">
-                  {/* Health Bar Frame */}
+                  {/* Epic Health Bar Frame */}
                   <div className="relative">
-                    {/* Outer Hexagonal Frame */}
-                    <div className="absolute -inset-2">
-                      <div className="w-full h-full border-2 border-purple-500/30 rounded-lg relative">
-                        <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-purple-500/40 border border-purple-400/60 rotate-45" />
-                        <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-2 h-2 bg-purple-500/40 border border-purple-400/60 rotate-45" />
-                        <div className="absolute -left-1 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-purple-500/40 border border-purple-400/60 rotate-45" />
-                        <div className="absolute -right-1 top-1/2 transform -translate-y-1/2 w-2 h-2 bg-purple-500/40 border border-purple-400/60 rotate-45" />
+                    {/* Multi-layer Battle Frame */}
+                    <div className="absolute -inset-3">
+                      <div className="w-full h-full border-[3px] border-red-500/40 rounded-xl relative shadow-lg shadow-red-500/30">
+                        <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-red-500/60 border-2 border-red-400/80 rotate-45" />
+                        <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-3 h-3 bg-red-500/60 border-2 border-red-400/80 rotate-45" />
+                        <div className="absolute -left-2 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-purple-500/60 border-2 border-purple-400/80 rotate-45" />
+                        <div className="absolute -right-2 top-1/2 transform -translate-y-1/2 w-3 h-3 bg-purple-500/60 border-2 border-purple-400/80 rotate-45" />
                       </div>
                     </div>
 
-                    {/* Inner Glow */}
-                    <div className="absolute inset-0 bg-purple-500/5 rounded-lg blur-sm" />
+                    {/* Inner Battle Glow */}
+                    <div className="absolute inset-0 bg-red-500/10 rounded-xl" />
 
-                    {/* Health Bar */}
-                    <div className="relative bg-gray-900/80 backdrop-blur-sm rounded-lg p-4 border border-gray-700/50">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
-                          <span className="text-red-400 font-bold text-sm tracking-wider">
-                            HP
+                    {/* Epic Health Bar Container */}
+                    <div className="relative bg-gray-900/90 rounded-xl p-5 border-2 border-red-500/30 shadow-2xl">
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-4 h-4 bg-red-500 rounded-full shadow-lg shadow-red-500/50" />
+                          <span className="text-red-400 font-black text-base tracking-widest uppercase">
+                            HEALTH POINTS
                           </span>
                         </div>
-                        <div className="text-white font-mono text-sm">
+                        <div className="text-white font-mono text-sm font-bold bg-gray-800/50 px-3 py-1 rounded-lg border border-gray-700/50">
                           {Number(currentBoss.currentHealth).toFixed(2)} /{" "}
                           {currentBoss.maxHealth}
                         </div>
                       </div>
 
                       <div className="relative">
-                        <div className="w-full bg-gray-800/50 rounded-full h-6 border border-gray-600/50 overflow-hidden shadow-inner">
+                        {/* Health Bar Background */}
+                        <div className="w-full bg-gray-800/70 rounded-full h-8 border-2 border-gray-700/70 overflow-hidden shadow-inner">
                           <div
                             className={`h-full transition-all duration-1000 ease-out relative rounded-full ${currentBoss.currentHealth >
                               currentBoss.maxHealth * 0.6
-                              ? "bg-linear-to-r from-green-500 via-green-400 to-emerald-500"
+                              ? "bg-green-500"
                               : currentBoss.currentHealth >
                                 currentBoss.maxHealth * 0.3
-                                ? "bg-linear-to-r from-yellow-500 via-orange-500 to-red-500"
-                                : "bg-linear-to-r from-red-600 via-red-500 to-red-700"
+                                ? "bg-yellow-500"
+                                : "bg-red-700"
                               }`}
                             style={{
                               width: `${(currentBoss.currentHealth /
@@ -1021,15 +1056,20 @@ export default function Home() {
                                 }%`,
                             }}
                           >
-                            {/* Energy effect */}
-                            <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/30 to-transparent animate-shine" />
-                            <div className="absolute inset-0 bg-linear-to-r from-transparent to-black/20 rounded-full" />
+                            {/* Epic Energy effect */}
+                            <div className="absolute inset-0 bg-white/20" />
+                            <div className="absolute inset-0 bg-black/30 rounded-full" />
+
+                            {/* Health bar glow */}
+                            {currentBoss.currentHealth <= currentBoss.maxHealth * 0.3 && (
+                              <div className="absolute inset-0 bg-red-500/30 rounded-full" />
+                            )}
                           </div>
                         </div>
 
-                        {/* Percentage Display */}
+                        {/* Epic Percentage Display */}
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <span className="text-white font-black text-lg drop-shadow-lg font-mono">
+                          <span className="text-white font-black text-xl md:text-2xl drop-shadow-2xl font-mono">
                             {(
                               (currentBoss.currentHealth /
                                 currentBoss.maxHealth) *
@@ -1039,9 +1079,11 @@ export default function Home() {
                           </span>
                         </div>
 
-                        {/* Corner accents */}
-                        <div className="absolute -top-1 -left-1 w-2 h-2 bg-purple-400/60 rounded-full animate-pulse" />
-                        <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-400/60 rounded-full animate-pulse" />
+                        {/* Battle Corner accents - Enhanced */}
+                        <div className="absolute -top-2 -left-2 w-3 h-3 bg-red-400/70 rounded-full shadow-lg shadow-red-500/50" />
+                        <div className="absolute -top-2 -right-2 w-3 h-3 bg-purple-400/70 rounded-full shadow-lg shadow-purple-500/50" />
+                        <div className="absolute -bottom-2 -left-2 w-3 h-3 bg-blue-400/70 rounded-full shadow-lg shadow-blue-500/50" />
+                        <div className="absolute -bottom-2 -right-2 w-3 h-3 bg-purple-400/70 rounded-full shadow-lg shadow-purple-500/50" />
                       </div>
                     </div>
                   </div>
@@ -1049,11 +1091,11 @@ export default function Home() {
               </div>
             </div>
           ) : (
-            <div className="text-center animate-fadeIn">
+            <div className="text-center">
               <div className="relative">
                 {/* Loading/Boss not found message */}
                 <div className="flex flex-col items-center space-y-4">
-                  <div className="w-16 h-16 border-4 border-red-500/30 border-t-red-500 rounded-full animate-spin"></div>
+                  <div className="w-16 h-16 border-4 border-red-500/30 border-t-red-500 rounded-full"></div>
                   <div className="text-center">
                     <h3 className="text-xl font-bold text-white mb-2">
                       Boss Not Loaded
@@ -1066,7 +1108,7 @@ export default function Home() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-red-500">
-                    <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                    <div className="w-2 h-2 bg-red-500 rounded-full"></div>
                     <span>Critical: No boss available</span>
                   </div>
                 </div>
@@ -1082,14 +1124,19 @@ export default function Home() {
           )}
         </div>
 
-        {/* Right Panel - Trade Monitor */}
+        {/* Right Panel - Trade Monitor - Battle Style */}
         <div className="right-panel w-full xl:w-80 flex flex-col space-y-4">
-          <div className="bg-gray-900/40 backdrop-blur-sm border border-purple-500/20 rounded-xl p-4 h-96 xl:h-full">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-purple-300 flex items-center gap-2">
-                Trade Monitor
+          <div className="bg-gray-900/60 border-2 border-blue-500/30 rounded-xl p-4 h-96 xl:h-full shadow-2xl shadow-blue-500/20 relative overflow-hidden">
+            {/* Battle Panel Background Effect */}
+            <div className="absolute inset-0 bg-blue-500/5" />
+            <div className="absolute top-0 left-0 right-0 h-[2px] bg-blue-500/60" />
+
+            <div className="flex items-center justify-between mb-4 relative z-10">
+              <h3 className="text-xl font-black text-blue-400 flex items-center gap-2">
+                <span></span>
+                <span>TRADE MONITOR</span>
               </h3>
-              <div className="text-xs text-purple-400 bg-purple-900/30 px-2 py-1 rounded-full">
+              <div className="text-xs font-bold text-green-400 bg-green-900/30 border-2 border-green-500/50 px-3 py-1.5 rounded-full">
                 LIVE
               </div>
             </div>
@@ -1103,29 +1150,32 @@ export default function Home() {
                 recentTrades.map((trade, index) => (
                   <div
                     key={index}
-                    className="flex items-center justify-between py-2 border-b border-gray-800/30"
+                    className={`flex items-center justify-between py-3 border-b ${trade.type === "buy"
+                      ? "border-red-500/20 hover:bg-red-500/10"
+                      : "border-green-500/20 hover:bg-green-500/10"
+                      } rounded-lg px-3 -mx-3 transition-all duration-300 relative z-10 group`}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${trade.type === "buy"
-                          ? "bg-red-500/20 text-red-300 border border-red-500/30"
-                          : "bg-green-500/20 text-green-300 border border-green-500/30"
+                        className={`w-10 h-10 rounded-full flex items-center justify-center text-lg font-bold border-2 shadow-lg ${trade.type === "buy"
+                          ? "bg-red-500/30 text-red-200 border-red-400/60 group-hover:scale-110 transition-transform"
+                          : "bg-green-500/30 text-green-200 border-green-400/60 group-hover:scale-110 transition-transform"
                           }`}
                       >
-                        {trade.type === "buy" ? "🗡️" : "💚"}
+                        {trade.type === "buy" ? "ATK" : "HEAL"}
                       </div>
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium text-gray-300">
+                        <span className="text-sm font-bold text-white group-hover:text-purple-300 transition-colors">
                           {trade.solAmount.toFixed(4)} SOL
                         </span>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-gray-400">
                           {new Date(trade.timestamp).toLocaleTimeString()}
                         </span>
                       </div>
                     </div>
                     <div className="text-right">
                       <div
-                        className={`text-sm font-bold ${trade.type === "buy"
+                        className={`text-lg font-black drop-shadow-lg group-hover:scale-110 transition-transform ${trade.type === "buy"
                           ? "text-red-400"
                           : "text-green-400"
                           }`}
@@ -1134,7 +1184,7 @@ export default function Home() {
                           ? `-${Math.round(trade.damage)} HP`
                           : `+${Math.round(trade.heal)} HP`}
                       </div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-gray-400 font-semibold">
                         {trade.bossName}
                       </div>
                     </div>
