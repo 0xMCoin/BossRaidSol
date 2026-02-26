@@ -108,7 +108,7 @@ export default function Home() {
 
   // Token info constants
   const tokenMint = process.env.NEXT_PUBLIC_TOKEN_MINT || "";
-  const twitterUrl = "https://x.com/ChillRaidFun";
+  const twitterUrl = "https://x.com/CTWARS_SOL";
 
   // Format boss Twitter URL
   const getBossTwitterUrl = (twitter?: string): string | null => {
