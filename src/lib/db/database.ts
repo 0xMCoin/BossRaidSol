@@ -17,6 +17,7 @@ export interface Boss {
   sprites: { idle: string; hitting: string; healing: string; dead: string };
   isDefeated: boolean;
   defeatedAt?: string;
+  twitter?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -35,6 +36,7 @@ export interface BossRegistrationData {
     healing: string;
     dead: string;
   };
+  twitter?: string;
 }
 
 export interface PumpPortalTrade {
@@ -105,6 +107,7 @@ function mapRowToBoss(row: Record<string, unknown>): Boss {
     })(),
     isDefeated: Boolean(row.is_defeated),
     defeatedAt: row.defeated_at != null ? String(row.defeated_at) : undefined,
+    twitter: row.twitter != null ? String(row.twitter) : undefined,
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   };
@@ -201,6 +204,7 @@ export async function addOrUpdateBoss(
     sprites: bossData.sprites,
     is_defeated: bossData.isDefeated ?? false,
     defeated_at: bossData.defeatedAt ?? null,
+    twitter: bossData.twitter ?? null,
     updated_at: now,
   };
 
@@ -238,6 +242,7 @@ export function registerBossFromData(bossRegData: BossRegistrationData): Promise
     sellWeight: bossRegData.sellWeight,
     sprites: bossRegData.sprites,
     isDefeated: false,
+    twitter: bossRegData.twitter,
   };
   return addOrUpdateBoss(bossData);
 }

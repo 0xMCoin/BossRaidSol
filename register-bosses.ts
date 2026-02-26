@@ -20,6 +20,7 @@ const bossesData = [
     sellWeight: 0.35,
     buyDmg: 4.5,
     sellHeal: 20,
+    twitter: "https://x.com/quantgz",
     sprites: {
       idle: "/b1-quant-kid/quant-kid-idle.png",
       hitting: "/b1-quant-kid/quant-kid-hitting.png",
@@ -35,6 +36,7 @@ const bossesData = [
     sellWeight: 0.4,
     buyDmg: 6,
     sellHeal: 25,
+    twitter: "https://x.com/CookerFlips",
     sprites: {
       idle: "/b2-cooker-flips/cooker-flips-idle.png",
       hitting: "/b2-cooker-flips/cooker-flips-hitting.png",
@@ -50,6 +52,7 @@ const bossesData = [
     sellWeight: 0.42,
     buyDmg: 8,
     sellHeal: 30,
+    twitter: "https://x.com/Cupseyy",
     sprites: {
       idle: "/b3-cupsey/cupsey-idle.png",
       hitting: "/b3-cupsey/cupsey-hitting.png",
@@ -65,6 +68,7 @@ const bossesData = [
     sellWeight: 0.45,
     buyDmg: 10,
     sellHeal: 40,
+    twitter: "https://x.com/orangie",
     sprites: {
       idle: "/b4-orangie/orangie-idle.png",
       hitting: "/b4-orangie/orangie-hitting.png",
@@ -80,6 +84,7 @@ const bossesData = [
     sellWeight: 0.48,
     buyDmg: 12,
     sellHeal: 45,
+    twitter: "https://x.com/98sThoughts",
     sprites: {
       idle: "/b5-ninety/b5-ninety-ghost/ninety-idle.png",
       hitting: "/b5-ninety/b5-ninety-ghost/ninety-hitting.png",
@@ -95,6 +100,7 @@ const bossesData = [
     sellWeight: 0.5,
     buyDmg: 15,
     sellHeal: 50,
+    twitter: "https://x.com/notthreadguy",
     sprites: {
       idle: "/b6-threadguy/threadguy-idle.png",
       hitting: "/b6-threadguy/threadguy-hitting.png",
@@ -110,6 +116,7 @@ const bossesData = [
     sellWeight: 0.55,
     buyDmg: 18,
     sellHeal: 60,
+    twitter: "https://x.com/frankdegods",
     sprites: {
       idle: "/b7-frankdegods/frankdegods-idle.png",
       hitting: "/b7-frankdegods/frankdegods-hitting.png",
@@ -125,6 +132,7 @@ const bossesData = [
     sellWeight: 0.6,
     buyDmg: 20,
     sellHeal: 70,
+    twitter: "https://x.com/HsakaTrades",
     sprites: {
       idle: "/b8-alon/alon-idle.png",
       hitting: "/b8-alon/alon-hitting.png",
@@ -140,6 +148,7 @@ const bossesData = [
     sellWeight: 0.65,
     buyDmg: 22,
     sellHeal: 80,
+    twitter: "https://x.com/a1lon9",
     sprites: {
       idle: "/b8-hsaka/hsaka-idle.png",
       hitting: "/b8-hsaka/hsaka-hitting.png",
@@ -155,6 +164,7 @@ const bossesData = [
     sellWeight: 0.7,
     buyDmg: 25,
     sellHeal: 90,
+    twitter: "https://x.com/toly",
     sprites: {
       idle: "/b9-toly-wizard/toly-wizard-idle.png",
       hitting: "/b9-toly-wizard/toly-wizard-hitting.png",

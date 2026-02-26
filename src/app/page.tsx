@@ -108,7 +108,23 @@ export default function Home() {
 
   // Token info constants
   const tokenMint = process.env.NEXT_PUBLIC_TOKEN_MINT || "";
-  const twitterUrl = "https://x.com/ChillRaidFun"
+  const twitterUrl = "https://x.com/ChillRaidFun";
+
+  // Format boss Twitter URL
+  const getBossTwitterUrl = (twitter?: string): string | null => {
+    if (!twitter || twitter === "") return null;
+
+    // If it's already a full URL, return as is
+    if (twitter.startsWith("http://") || twitter.startsWith("https://")) {
+      return twitter;
+    }
+
+    // Remove @ if present and build URL
+    const handle = twitter.replace(/^@/, "");
+    return `https://x.com/${handle}`;
+  };
+
+  const bossTwitterUrl = getBossTwitterUrl(currentBoss?.twitter);
 
   // Refs para acessar valores atuais sem causar re-renders
   const currentBossRef = useRef<DatabaseBoss | null>(null);
@@ -631,27 +647,77 @@ export default function Home() {
   }, [damageLoading, currentBoss]);
 
   return (
-    <div className="min-h-screen bg-black text-gray-300 overflow-hidden relative">
-      {/* Epic Battle Arena Background */}
-      <div className="absolute inset-0 bg-black" />
+    <div className="min-h-screen text-gray-300 overflow-hidden relative bg-[url('/images/bg.png')] bg-cover bg-center">
+      {/* Starry Sky / Galaxy Background */}
+      <div className="starry-sky opacity-50">
+        {/* Nebulas */}
+        <div className="galaxy-nebula nebula-1"></div>
+        <div className="galaxy-nebula nebula-2"></div>
+        <div className="galaxy-nebula nebula-3"></div>
 
-      {/* Battle Atmosphere Layers */}
-      <div className="absolute inset-0 opacity-20">
-        <div className="absolute inset-0 bg-red-500/10" />
-        <div className="absolute inset-0 bg-purple-500/10" />
-        <div className="absolute inset-0 bg-blue-500/10" />
+        {/* Stars Layer */}
+        <div className="stars">
+          {/* Small stars */}
+          {Array.from({ length: 150 }).map((_, i) => (
+            <div
+              key={`small-${i}`}
+              className="star star-small"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                opacity: Math.random() * 0.5 + 0.3,
+                animationDelay: `${Math.random() * 8}s`,
+              }}
+            />
+          ))}
+          {/* Medium stars */}
+          {Array.from({ length: 50 }).map((_, i) => (
+            <div
+              key={`medium-${i}`}
+              className="star star-medium"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                opacity: Math.random() * 0.5 + 0.5,
+                animationDelay: `${Math.random() * 10}s`,
+              }}
+            />
+          ))}
+          {/* Large twinkling stars */}
+          {Array.from({ length: 20 }).map((_, i) => (
+            <div
+              key={`large-${i}`}
+              className="star star-large star-twinkle"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                opacity: Math.random() * 0.3 + 0.7,
+                animationDelay: `${Math.random() * 3}s`,
+              }}
+            />
+          ))}
+          {/* Drifting stars */}
+          {Array.from({ length: 10 }).map((_, i) => (
+            <div
+              key={`drift-${i}`}
+              className="star star-medium star-drift"
+              style={{
+                left: `${Math.random() * 100}%`,
+                top: `${Math.random() * 100}%`,
+                opacity: Math.random() * 0.4 + 0.6,
+                animationDelay: `${Math.random() * 20}s`,
+                animationDuration: `${15 + Math.random() * 10}s`,
+              }}
+            />
+          ))}
+        </div>
       </div>
 
-      {/* Dynamic Battle Grid Pattern */}
-      <div className="absolute inset-0 opacity-15">
-        <div className="absolute inset-0 bg-purple-500/20" />
-        {/* Battle particles effect */}
-        <div
-          className="absolute inset-0 opacity-20"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92FF' fill-opacity='0.1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-          }}
-        />
+      {/* Battle Atmosphere Overlay */}
+      <div className="absolute inset-0 opacity-10 z-10">
+        <div className="absolute inset-0 bg-red-500/5" />
+        <div className="absolute inset-0 bg-purple-500/5" />
+        <div className="absolute inset-0 bg-blue-500/5" />
       </div>
 
       {/* Epic Battle Arena Border */}
@@ -700,10 +766,10 @@ export default function Home() {
         <div className="flex items-center justify-center mb-6">
           <div className="w-24 h-[2px] bg-red-500/70" />
           <div className="mx-4 w-3 h-3 bg-red-500/80 rounded-full" />
-          <div className="mx-2 text-purple-400 text-xl font-black tracking-widest">
+          <div className="mx-2 text-red-400 text-xl font-black tracking-widest">
             RAID
           </div>
-          <div className="mx-4 w-3 h-3 bg-purple-500/80 rounded-full" />
+          <div className="mx-4 w-3 h-3 bg-red-500/80 rounded-full" />
           <div className="w-24 h-[2px] bg-red-500/70" />
         </div>
 
@@ -724,38 +790,28 @@ export default function Home() {
         </p>
 
         {/* Token CA and Twitter - Prominent Display */}
-        <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-4">
+        <div className="mt-6 flex flex-col items-center justify-center gap-4">
           {/* Contract Address */}
           <div className="group relative bg-purple-900/40 border border-purple-500/30 rounded-xl px-6 py-3 hover:border-purple-400/50 transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/20">
             <div className="flex items-center gap-3">
               <div className="flex flex-col">
                 <span className="text-xs text-purple-300/70 uppercase tracking-wider mb-1">Contract Address</span>
                 <div className="flex items-center gap-2">
-                  <code className="text-sm font-mono text-white font-semibold">
+                  <code onClick={(e) => {
+                    navigator.clipboard.writeText(tokenMint);
+                    // Visual feedback
+                    const btn = e.currentTarget;
+                    const originalText = btn.innerHTML;
+                    btn.classList.add("text-green-400");
+                    setTimeout(() => {
+                      btn.innerHTML = originalText;
+                      btn.classList.remove("text-green-400");
+                    }, 2000);
+                  }} className="text-sm font-mono text-white font-semibold">
                     {tokenMint
                       ? `${tokenMint}`
                       : "Not configured"}
                   </code>
-                  {tokenMint && (
-                    <button
-                      onClick={(e) => {
-                        navigator.clipboard.writeText(tokenMint);
-                        // Visual feedback
-                        const btn = e.currentTarget;
-                        const originalText = btn.innerHTML;
-                        btn.innerHTML = "Copied";
-                        btn.classList.add("text-green-400");
-                        setTimeout(() => {
-                          btn.innerHTML = originalText;
-                          btn.classList.remove("text-green-400");
-                        }, 2000);
-                      }}
-                      className="text-purple-300 hover:text-purple-200 transition-colors text-sm"
-                      title="Copy full address"
-                    >
-                      Copy
-                    </button>
-                  )}
                 </div>
               </div>
             </div>
@@ -770,18 +826,35 @@ export default function Home() {
             )}
           </div>
 
-          <a
-            href={twitterUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group relative bg-blue-900/40 border border-blue-500/30 rounded-xl px-6 py-3 hover:border-blue-400/50 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/20 flex items-center gap-3"
-          >
-            <div className="flex flex-col">
-              <span className="text-xs text-blue-300/70 uppercase tracking-wider mb-1">Follow Us</span>
-              <span className="text-sm font-semibold text-white">Twitter</span>
-            </div>
-            <div className="text-blue-400 group-hover:translate-x-1 transition-transform">&gt;</div>
-          </a>
+          <div className="flex items-center justify-center gap-4">
+            <a
+              href={twitterUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group relative bg-blue-900/40 border border-blue-500/30 rounded-xl px-6 py-3 hover:border-blue-400/50 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/20 flex items-center gap-3"
+            >
+              <div className="flex flex-col">
+                <span className="text-xs text-blue-300/70 uppercase tracking-wider mb-1">Follow Us</span>
+                <span className="text-sm font-semibold text-white">Twitter</span>
+              </div>
+            </a>
+
+            {bossTwitterUrl && (
+              <a
+                href={bossTwitterUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group relative bg-blue-900/40 border border-blue-500/30 rounded-xl px-6 py-3 hover:border-blue-400/50 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/20 flex items-center gap-3"
+              >
+                <div className="flex flex-col">
+                  <span className="text-xs text-blue-300/70 uppercase tracking-wider mb-1">Follow Boss</span>
+                  <span className="text-sm font-semibold text-white">
+                    {currentBoss?.name} Twitter
+                  </span>
+                </div>
+              </a>
+            )}
+          </div>
         </div>
       </div>
 

@@ -78,7 +78,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <link rel="icon" href="/logo.png" />
         <meta name="color-scheme" content="dark" />
       </head>
-      <body className="min-h-screen bg-background text-foreground flex flex-col">
+      <body className="min-h-screen bg-background text-foreground flex flex-col page-bg">
         <main className="flex-1">{children}</main>
         <Analytics />
       </body>
