@@ -154,7 +154,6 @@ export default function Home() {
     return handleMap[bossId || ""] || "ChillRaidFun";
   };
 
-  // Generate tweet intent URL for current boss
   const getTweetIntentUrl = (): string => {
     const handle = getBossTwitterHandle(currentBoss?.bossId, currentBoss?.twitter);
     const tweetText = `Hey @${handle} — are you scared? Step into $CTWARS and kill your boss version. Only the KOL wallet can HitKill. ${process.env.NEXT_PUBLIC_TOKEN_MINT}`;
