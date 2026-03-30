@@ -26,8 +26,8 @@ const bossesData = [
       idle: "/b1-quant-kid/quant-kid-idle.png",
       hitting: "/b1-quant-kid/quant-kid-hitting.png",
       healing: "/b1-quant-kid/quant-kid-healing.png",
-      dead: "/b1-quant-kid/quant-kid-dead.png"
-    }
+      dead: "/b1-quant-kid/quant-kid-dead.png",
+    },
   },
   {
     id: "cooker-flips",
@@ -43,8 +43,8 @@ const bossesData = [
       idle: "/b2-cooker-flips/cooker-flips-idle.png",
       hitting: "/b2-cooker-flips/cooker-flips-hitting.png",
       healing: "/b2-cooker-flips/cooker-flips-healing.png",
-      dead: "/b2-cooker-flips/cooker-flips-dead.png"
-    }
+      dead: "/b2-cooker-flips/cooker-flips-dead.png",
+    },
   },
   {
     id: "cupsey",
@@ -60,25 +60,25 @@ const bossesData = [
       idle: "/b3-cupsey/cupsey-idle.png",
       hitting: "/b3-cupsey/cupsey-hitting.png",
       healing: "/b3-cupsey/cupsey-healing.png",
-      dead: "/b3-cupsey/cupsey-dead.png"
-    }
+      dead: "/b3-cupsey/cupsey-dead.png",
+    },
   },
   {
-    id: "orangie",
-    name: "Orangie",
+    id: "doji",
+    name: "Doji",
     hpMax: 8000,
     buyWeight: 0.55,
     sellWeight: 0.45,
     buyDmg: 10,
     sellHeal: 40,
-    twitter: "https://x.com/orangie",
-    wallet: "26kZ9rg8Y5pd4j1tdT4cbT8BQRu5uDbXkaVs3L5QasHy",
+    twitter: "https://x.com/Humanevolvd",
+    wallet: "5ZuV8eqkvzYFVEKbLvGBdexL2tFv7E5BCd2HZpjqbdg",
     sprites: {
-      idle: "/b4-orangie/orangie-idle.png",
-      hitting: "/b4-orangie/orangie-hitting.png",
-      healing: "/b4-orangie/orangie-healing.png",
-      dead: "/b4-orangie/orangie-dead.png"
-    }
+      idle: "/b4-orangie/doji-idle.png",
+      hitting: "/b4-orangie/doji-hitting.png",
+      healing: "/b4-orangie/doji-healing.png",
+      dead: "/b4-orangie/doji-dead.png",
+    },
   },
   {
     id: "ninety",
@@ -94,8 +94,8 @@ const bossesData = [
       idle: "/b5-ninety/b5-ninety-ghost/ninety-idle.png",
       hitting: "/b5-ninety/b5-ninety-ghost/ninety-hitting.png",
       healing: "/b5-ninety/b5-ninety-ghost/ninety-healing.png",
-      dead: "/b5-ninety/b5-ninety-ghost/ninety-dead.png"
-    }
+      dead: "/b5-ninety/b5-ninety-ghost/ninety-dead.png",
+    },
   },
   {
     id: "gake",
@@ -111,8 +111,8 @@ const bossesData = [
       idle: "/gake/gake-idle.png",
       hitting: "/gake/gake-hitting.png",
       healing: "/gake/gake-healing.png",
-      dead: "/gake/gake-dead.png"
-    }
+      dead: "/gake/gake-dead.png",
+    },
   },
   {
     id: "threadguy",
@@ -128,8 +128,8 @@ const bossesData = [
       idle: "/b6-threadguy/threadguy-idle.png",
       hitting: "/b6-threadguy/threadguy-hitting.png",
       healing: "/b6-threadguy/threadguy-healing.png",
-      dead: "/b6-threadguy/threadguy-dead.png"
-    }
+      dead: "/b6-threadguy/threadguy-dead.png",
+    },
   },
   {
     id: "frankdegods",
@@ -145,8 +145,8 @@ const bossesData = [
       idle: "/b7-frankdegods/frankdegods-idle.png",
       hitting: "/b7-frankdegods/frankdegods-hitting.png",
       healing: "/b7-frankdegods/frankdegods-healing.png",
-      dead: "/b7-frankdegods/frankdegods-dead.png"
-    }
+      dead: "/b7-frankdegods/frankdegods-dead.png",
+    },
   },
   {
     id: "alon",
@@ -162,8 +162,8 @@ const bossesData = [
       idle: "/b8-alon/alon-idle.png",
       hitting: "/b8-alon/alon-hitting.png",
       healing: "/b8-alon/alon-healing.png",
-      dead: "/b8-alon/alon-dead.png"
-    }
+      dead: "/b8-alon/alon-dead.png",
+    },
   },
   {
     id: "hsaka",
@@ -179,8 +179,8 @@ const bossesData = [
       idle: "/b8-hsaka/hsaka-idle.png",
       hitting: "/b8-hsaka/hsaka-hitting.png",
       healing: "/b8-hsaka/hsaka-healing.png",
-      dead: "/b8-hsaka/hsaka-dead.png"
-    }
+      dead: "/b8-hsaka/hsaka-dead.png",
+    },
   },
   {
     id: "toly-wizard",
@@ -196,8 +196,8 @@ const bossesData = [
       idle: "/b9-toly-wizard/toly-wizard-idle.png",
       hitting: "/b9-toly-wizard/toly-wizard-hitting.png",
       healing: "/b9-toly-wizard/toly-wizard-healing.png",
-      dead: "/b9-toly-wizard/toly-wizard-dead.png"
-    }
+      dead: "/b9-toly-wizard/toly-wizard-dead.png",
+    },
   },
 ];
 
@@ -210,7 +210,9 @@ async function registerBosses() {
   for (const bossData of bossesData) {
     try {
       const boss = await registerBossFromData(bossData);
-      console.log(`[SUCCESS] Registered boss: ${boss.name} (${boss.bossId}) - HP: ${boss.currentHealth}/${boss.maxHealth}`);
+      console.log(
+        `[SUCCESS] Registered boss: ${boss.name} (${boss.bossId}) - HP: ${boss.currentHealth}/${boss.maxHealth}`,
+      );
       successCount++;
     } catch (error) {
       console.error(`[ERROR] Failed to register boss ${bossData.name}:`, error);
@@ -223,3 +225,4 @@ async function registerBosses() {
 }
 
 registerBosses().catch(console.error);
+

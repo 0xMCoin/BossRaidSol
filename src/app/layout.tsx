@@ -55,11 +55,11 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/logo.jpg", sizes: "64x64", type: "image/png" },
-      { url: "/logo.jpg", sizes: "192x192", type: "image/png" },
-      { url: "/logo.jpg", sizes: "512x512", type: "image/png" },
+      { url: "/logo.jpeg", sizes: "64x64", type: "image/jpeg" },
+      { url: "/logo.jpeg", sizes: "192x192", type: "image/jpeg" },
+      { url: "/logo.jpeg", sizes: "512x512", type: "image/jpeg" },
     ],
-    apple: [{ url: "/logo.jpg", sizes: "180x180", type: "image/png" }],
+    apple: [{ url: "/logo.jpeg", sizes: "180x180", type: "image/jpeg" }],
   },
 };
 
@@ -85,3 +85,4 @@ export default function RootLayout({ children }: RootLayoutProps) {
     </html>
   );
 }
+
